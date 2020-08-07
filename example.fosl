@@ -1,0 +1,31 @@
+(1 + 1) * 1 * (2 + 3) == !!!(--(-true))
+
+/#
+namespace std::fmt {
+    pub fn format_value(value: $T, format_options: FormatOptions) -> string
+}
+#/
+
+/#
+
+struct Something {
+    something: int,
+    something_else: float
+}
+
+namespace std {
+    fn format (fmt: string, args: [any]) -> string
+}
+
+/#
+    All mangled symbols begin with _Z; for nested names (including both namespaces and classes), this is followed by N, then a series of <length, id> pairs (the length being the length of the next identifier), and finally E which is followed by the argument types of the function.
+
+    std::format(string, std::array<any>) -> string -> _ZN3std6formatE6stringNSt3std5arrayI3any
+#/
+
+pub fn main -> none {
+    var something = 10
+
+    std::print("something is {}\n", something)
+}
+#/

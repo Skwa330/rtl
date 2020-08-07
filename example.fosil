@@ -1,0 +1,6 @@
+@main (%a = int32; %b = int32; %c = int32) -> int32 {
+    %t0 = $sub int32 #100, int32 #10
+    %t1 = $add %t0, int32 #1
+    %t2 = $div %t1, int32 #2
+    $ret int32 %t2
+}

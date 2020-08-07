@@ -1,0 +1,12 @@
+[submodule "deps/ya_getopt"]
+	path = deps/ya_getopt
+	url = https://github.com/kubo/ya_getopt
+[submodule "deps/fmt"]
+	path = deps/fmt
+	url = https://github.com/fmtlib/fmt
+[submodule "deps/filesystem"]
+	path = deps/filesystem
+	url = https://github.com/gulrak/filesystem
+[submodule "deps\\llvm-project"]
+	path = deps\\llvm-project
+	url = https://github.com/llvm/llvm-project
