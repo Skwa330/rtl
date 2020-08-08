@@ -1,12 +1,12 @@
-#ifndef FOSL_PARSER_PARSER_H
-#define FOSL_PARSER_PARSER_H
+#ifndef LANG_PARSER_PARSER_H
+#define LANG_PARSER_PARSER_H
 
-#include "fosl/parser/Lexer.h"
-#include "fosl/parser/AST.h"
+#include "lang/parser/Lexer.h"
+#include "lang/parser/AST.h"
 
 #include <tuple>
 
-namespace fosl {
+namespace lang {
     namespace parser {
         using MatchType = std::pair<std::size_t, bool>;
 
@@ -109,4 +109,4 @@ namespace fosl {
     }
 }
 
-#endif /* FOSL_PARSER_PARSER_H */
+#endif /* LANG_PARSER_PARSER_H */

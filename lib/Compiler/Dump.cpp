@@ -2,7 +2,7 @@
 
 #include <fmt/format.h>
 
-namespace fosl {
+namespace lang {
     namespace compiler {
         std::string escapeString(const std::string_view &s) {
             std::string result;
@@ -44,13 +44,13 @@ namespace fosl {
             return result;
         }
 
-        void dumpNode(const std::shared_ptr<fosl::parser::ASTNode>& node) {
+        void dumpNode(const std::shared_ptr<lang::parser::ASTNode>& node) {
             if (!node) return;
 
             std::putchar('(');
 
-            if (node->getType() == fosl::parser::ASTType::Call) {
-                auto call = std::reinterpret_pointer_cast<fosl::parser::ASTCall>(node);
+            if (node->getType() == lang::parser::ASTType::Call) {
+                auto call = std::reinterpret_pointer_cast<lang::parser::ASTCall>(node);
 
                 dumpNode(call->getCalled());
                 std::putchar('(');
@@ -65,74 +65,74 @@ namespace fosl {
                     dumpNode(node);
                 }
                 std::putchar(')');
-            } else if (node->getType() == fosl::parser::ASTType::Subscript) {
-                auto sub = std::reinterpret_pointer_cast<fosl::parser::ASTSubscript>(node);
+            } else if (node->getType() == lang::parser::ASTType::Subscript) {
+                auto sub = std::reinterpret_pointer_cast<lang::parser::ASTSubscript>(node);
 
                 dumpNode(sub->getIndexed());
                 std::putchar('[');
                 dumpNode(sub->getIndex());
                 std::putchar(']');
-            } else if (node->getType() == fosl::parser::ASTType::Literal) {
-                auto literal = std::reinterpret_pointer_cast<fosl::parser::ASTLiteral>(node);
+            } else if (node->getType() == lang::parser::ASTType::Literal) {
+                auto literal = std::reinterpret_pointer_cast<lang::parser::ASTLiteral>(node);
 
                 switch (literal->getLiteralType()) {
-                    case fosl::parser::ASTLiteral::Type::Integer: {
+                    case lang::parser::ASTLiteral::Type::Integer: {
                         fmt::print("{}", literal->getInteger());
                         break;
                     }
 
-                    case fosl::parser::ASTLiteral::Type::Decimal: {
+                    case lang::parser::ASTLiteral::Type::Decimal: {
                         fmt::print("{}", literal->getDecimal());
                         break;
                     }
 
-                    case fosl::parser::ASTLiteral::Type::Name: {
+                    case lang::parser::ASTLiteral::Type::Name: {
                         fmt::print("{}", literal->getString());
                         break;
                     }
 
-                    case fosl::parser::ASTLiteral::Type::String: {
+                    case lang::parser::ASTLiteral::Type::String: {
                         fmt::print("\"{}\"", escapeString(literal->getString()));
                         break;
                     }
 
-                    case fosl::parser::ASTLiteral::Type::Character: {
+                    case lang::parser::ASTLiteral::Type::Character: {
                         fmt::print("'{}'", literal->getCharacter());
                         break;
                     }
 
-                    case fosl::parser::ASTLiteral::Type::Bool: {
+                    case lang::parser::ASTLiteral::Type::Bool: {
                         fmt::print("{}", literal->getBool());
                         break;
                     }
                 }
-            } else if (node->getType() == fosl::parser::ASTType::UnaryOperator) {
-                auto unop = std::reinterpret_pointer_cast<fosl::parser::ASTUnaryOperator>(node);
+            } else if (node->getType() == lang::parser::ASTType::UnaryOperator) {
+                auto unop = std::reinterpret_pointer_cast<lang::parser::ASTUnaryOperator>(node);
 
                 const char *opname;
 
                 switch (unop->getUnopType()) {
-                    case fosl::parser::ASTUnaryOperator::Type::LogicalNot: {
+                    case lang::parser::ASTUnaryOperator::Type::LogicalNot: {
                         opname = "!";
                         break;
                     }
 
-                    case fosl::parser::ASTUnaryOperator::Type::BitNot: {
+                    case lang::parser::ASTUnaryOperator::Type::BitNot: {
                         opname = "~";
                         break;
                     }
 
-                    case fosl::parser::ASTUnaryOperator::Type::Minus: {
+                    case lang::parser::ASTUnaryOperator::Type::Minus: {
                         opname = "-";
                         break;
                     }
 
-                    case fosl::parser::ASTUnaryOperator::Type::Dereference: {
+                    case lang::parser::ASTUnaryOperator::Type::Dereference: {
                         opname = "*";
                         break;
                     }
 
-                    case fosl::parser::ASTUnaryOperator::Type::AddressOf: {
+                    case lang::parser::ASTUnaryOperator::Type::AddressOf: {
                         opname = "^";
                         break;
                     }
@@ -140,120 +140,120 @@ namespace fosl {
 
                 fmt::print("{}", opname);
                 dumpNode(unop->getNode());
-            } else if (node->getType() == fosl::parser::ASTType::BinaryOperator) {
-                auto binop = std::reinterpret_pointer_cast<fosl::parser::ASTBinaryOperator>(node);
+            } else if (node->getType() == lang::parser::ASTType::BinaryOperator) {
+                auto binop = std::reinterpret_pointer_cast<lang::parser::ASTBinaryOperator>(node);
 
                 const char *opname;
 
                 switch (binop->getBinopType()) {
-                    case fosl::parser::ASTBinaryOperator::Type::Add: {
+                    case lang::parser::ASTBinaryOperator::Type::Add: {
                         opname = "+";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::Subtract: {
+                    case lang::parser::ASTBinaryOperator::Type::Subtract: {
                         opname = "-";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::Modulo: {
+                    case lang::parser::ASTBinaryOperator::Type::Modulo: {
                         opname = "%";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::Multiply: {
+                    case lang::parser::ASTBinaryOperator::Type::Multiply: {
                         opname = "*";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::Divide: {
+                    case lang::parser::ASTBinaryOperator::Type::Divide: {
                         opname = "/";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::BitShiftLeft: {
+                    case lang::parser::ASTBinaryOperator::Type::BitShiftLeft: {
                         opname = "<<";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::BitShiftRight: {
+                    case lang::parser::ASTBinaryOperator::Type::BitShiftRight: {
                         opname = ">>";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::LogicalLessThan: {
+                    case lang::parser::ASTBinaryOperator::Type::LogicalLessThan: {
                         opname = "<";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::LogicalLessThanEqual: {
+                    case lang::parser::ASTBinaryOperator::Type::LogicalLessThanEqual: {
                         opname = "<=";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::LogicalGreaterThan: {
+                    case lang::parser::ASTBinaryOperator::Type::LogicalGreaterThan: {
                         opname = ">";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::LogicalGreaterThanEqual: {
+                    case lang::parser::ASTBinaryOperator::Type::LogicalGreaterThanEqual: {
                         opname = ">=";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::LogicalEqual: {
+                    case lang::parser::ASTBinaryOperator::Type::LogicalEqual: {
                         opname = "==";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::LogicalNotEqual: {
+                    case lang::parser::ASTBinaryOperator::Type::LogicalNotEqual: {
                         opname = "!=";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::BitAnd: {
+                    case lang::parser::ASTBinaryOperator::Type::BitAnd: {
                         opname = "&";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::BitXor: {
+                    case lang::parser::ASTBinaryOperator::Type::BitXor: {
                         opname = "^";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::BitOr: {
+                    case lang::parser::ASTBinaryOperator::Type::BitOr: {
                         opname = "|";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::LogicalAnd: {
+                    case lang::parser::ASTBinaryOperator::Type::LogicalAnd: {
                         opname = "&&";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::LogicalOr: {
+                    case lang::parser::ASTBinaryOperator::Type::LogicalOr: {
                         opname = "||";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::NamespaceResolution: {
+                    case lang::parser::ASTBinaryOperator::Type::NamespaceResolution: {
                         opname = "::";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::MemberResolution: {
+                    case lang::parser::ASTBinaryOperator::Type::MemberResolution: {
                         opname = ".";
                         break;
                     }
 
-                    case fosl::parser::ASTBinaryOperator::Type::Assign: {
+                    case lang::parser::ASTBinaryOperator::Type::Assign: {
                         opname = "=";
                         break;
                     }
                 }
 
                 dumpNode(binop->getLeft());
-                if (binop->getBinopType() != fosl::parser::ASTBinaryOperator::Type::NamespaceResolution && binop->getBinopType() != fosl::parser::ASTBinaryOperator::Type::MemberResolution) fmt::print(" {} ", opname);
+                if (binop->getBinopType() != lang::parser::ASTBinaryOperator::Type::NamespaceResolution && binop->getBinopType() != lang::parser::ASTBinaryOperator::Type::MemberResolution) fmt::print(" {} ", opname);
                 else fmt::print("{}", opname);
                 dumpNode(binop->getRight());
             }

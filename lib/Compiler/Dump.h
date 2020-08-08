@@ -1,12 +1,12 @@
-#ifndef FOSL_COMPILER_DUMP_H
-#define FOSL_COMPILER_DUMP_H
+#ifndef LANG_COMPILER_DUMP_H
+#define LANG_COMPILER_DUMP_H
 
-#include "fosl/Parser/AST.h"
+#include "lang/Parser/AST.h"
 
-namespace fosl {
+namespace lang {
     namespace compiler {
-        void dumpNode(const std::shared_ptr<fosl::parser::ASTNode>& node);
+        void dumpNode(const std::shared_ptr<lang::parser::ASTNode>& node);
     }
 }
 
-#endif /* FOSL_COMPILER_DUMP_H */
+#endif /* LANG_COMPILER_DUMP_H */

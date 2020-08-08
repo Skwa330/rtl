@@ -18,9 +18,9 @@
 #include <type_traits>
 #include <array>
 
-#include "fosl/parser/Lexer.h"
-#include "fosl/parser/Parser.h"
-#include "fosl/Core/Error.h"
+#include "lang/Parser/Lexer.h"
+#include "lang/Parser/Parser.h"
+#include "lang/Parser/Error.h"
 
 #include "Dump.h"
 
@@ -68,79 +68,17 @@ void colorizeTerminal() {
     #endif
 }
 
-void formatError(const fosl::Error &e, const std::string_view &source) {
-    const char *color = "";
+void formatError(const lang::parser::Error &e, const std::string_view &source) {
+    const char *type;
 
-    switch (e.getPriority()) {
-        case fosl::Error::Priority::Info: {
-            color = "\033[34;1m";
-            break;
-        }
-
-        case fosl::Error::Priority::Warning: {
-            color = "\033[35;1m";
-            break;
-        }
-
-        case fosl::Error::Priority::Error:
-        case fosl::Error::Priority::Fatal: {
-            color = "\033[31;1m";
-            break;
-        }
+    if (e.getType() == lang::parser::Error::Type::Lexical) {
+        type = "lex";
+    } else if (e.getType() == lang::parser::Error::Type::Syntactical) {
+        type = "syntax";
     }
 
-    const char *type = "";
-
-    if (e.getPriority() == fosl::Error::Priority::Error) {
-        switch (e.getType()) {
-            case fosl::Error::Type::Lexical: {
-                type = "lex ";
-                break;
-            }
-
-            case fosl::Error::Type::Syntactical: {
-                type = "syntax ";
-                break;
-            }
-
-            case fosl::Error::Type::Semantic: {
-                type = "semantic ";
-                break;
-            }
-
-            case fosl::Error::Type::Intermediate: {
-                type = "interm ";
-                break;
-            }
-        }
-    }
-
-    const char *priority = "";
-
-    switch (e.getPriority()) {
-        case fosl::Error::Priority::Info: {
-            priority = "info";
-            break;
-        }
-
-        case fosl::Error::Priority::Warning: {
-            priority = "warning";
-            break;
-        }
-
-        case fosl::Error::Priority::Error: {
-            priority = "error";
-            break;
-        }
-
-        case fosl::Error::Priority::Fatal: {
-            priority = "fatal error";
-            break;
-        }
-    }
-
-    fmt::print(stderr, "{}:{}:{}: {}{}{}: \033[0m{}\n\n", e.getModuleName(), e.getLine(), e.getLexpos(), color, type, priority, e.getMessage());
-    std::size_t errorLineIndex = getNthSubstr(e.getLine() - 1,  source, "\n");
+    fmt::print(stderr, "{}: {} \033[31;1merror: \033[0m{}\n\n", e.getSourceLocation().getFormatted(), type, e.getMessage());
+    std::size_t errorLineIndex = getNthSubstr(e.getSourceLocation().line - 1,  source, "\n");
     if (errorLineIndex == -1) {
         fmt::print(stderr, "\t\t\033[35;1m(failed to acquire source)\033[0m");
     } else {
@@ -154,7 +92,7 @@ void formatError(const fosl::Error &e, const std::string_view &source) {
 
         std::size_t i = 1;
 
-        for (; i < e.getLexpos(); i++) {
+        for (; i < e.getSourceLocation().lexpos; i++) {
             std::fputc(' ', stderr);
         }
 
@@ -251,30 +189,30 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    std::vector<std::shared_ptr<fosl::parser::ASTNode>> nodes;
-    auto parser = std::make_shared<fosl::parser::Parser>(nodes);
+    std::vector<std::shared_ptr<lang::parser::ASTNode>> nodes;
+    auto parser = std::make_shared<lang::parser::Parser>(nodes);
     parser->initFromFile(inputFiles[0]);
 
-    parser->getLexer()->setModuleName("Lolz");
+    parser->getLexer()->sourceLocation.moduleName = "Lolz";
 
     try {
-        std::shared_ptr<fosl::parser::ASTNode> expr = parser->parseExpr();
-        fosl::compiler::dumpNode(expr);
+        std::shared_ptr<lang::parser::ASTNode> expr = parser->parseExpr();
+        lang::compiler::dumpNode(expr);
         std::putchar('\n');
-    } catch (const fosl::Error &e) {
-        formatError(e, parser->getLexer()->getSource());
+    } catch (const lang::parser::Error &e) {
+        formatError(e, parser->getLexer()->source);
     } catch (const std::exception &e) {
         fmt::print(stderr, "{}\n", e.what());
     }
 
-    parser->getLexer()->setModuleName("Lolz2");
+    parser->getLexer()->sourceLocation.moduleName = "Lolz2";
 
     try {
-        std::shared_ptr<fosl::parser::ASTNode> expr = parser->parseExpr();
-        fosl::compiler::dumpNode(expr);
+        std::shared_ptr<lang::parser::ASTNode> expr = parser->parseExpr();
+        lang::compiler::dumpNode(expr);
         std::putchar('\n');
-    } catch (const fosl::Error &e) {
-        formatError(e, parser->getLexer()->getSource());
+    } catch (const lang::parser::Error &e) {
+        formatError(e, parser->getLexer()->source);
     } catch (const std::exception &e) {
         fmt::print(stderr, "{}\n", e.what());
     }

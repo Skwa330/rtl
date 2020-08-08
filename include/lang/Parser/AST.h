@@ -1,5 +1,5 @@
-#ifndef FOSL_PARSER_AST_H
-#define FOSL_PARSER_AST_H
+#ifndef LANG_PARSER_AST_H
+#define LANG_PARSER_AST_H
 
 #include <string_view>
 #include <string>
@@ -10,9 +10,9 @@
 
 #include <cstdint>
 
-#include "fosl/Core/SourceLocation.h"
+#include "SourceLocation.h"
 
-namespace fosl {
+namespace lang {
     namespace parser {
         class TypeDeclaration {
         public:
@@ -74,7 +74,7 @@ namespace fosl {
 
         class ASTNode {
         public:
-            core::SourceLocation location;
+            SourceLocation location;
 
             virtual ASTType getType() const = 0;
         };
@@ -297,4 +297,4 @@ namespace fosl {
     }
 }
 
-#endif /* FOSL_PARSER_AST_H */
+#endif /* LANG_PARSER_AST_H */

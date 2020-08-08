@@ -1,51 +1,50 @@
-#include "fosl/parser/Lexer.h"
+#include "lang/Parser/Lexer.h"
 #include <fmt/format.h>
 
-#include "fosl/Core/Error.h"
+#include "lang/Parser/Error.h"
 
 #include <cctype>
 
-namespace fosl {
+namespace lang {
     namespace parser {
         void Lexer::next() {
-            if (source[pointer++] == '\n') {
-                ++line;
-                lexpos = 1;
+            if (source[sourceLocation.pointer++] == '\n') {
+                ++sourceLocation.line;
+                sourceLocation.lexpos = 1;
             } else {
-                ++lexpos;
+                ++sourceLocation.lexpos;
             }
         }
 
         void Lexer::skip() {
             for (;;) {
-                while (pointer < source.size() && std::isspace(source[pointer])) {
+                while (sourceLocation.pointer < source.size() && std::isspace(source[sourceLocation.pointer])) {
                     next();
                 }
 
-                if (pointer < source.size() && source[pointer] == '#') {
-                    while (pointer < source.size() && source[pointer] != '\n') {
+                if (sourceLocation.pointer < source.size() && source[sourceLocation.pointer] == '#') {
+                    while (sourceLocation.pointer < source.size() && source[sourceLocation.pointer] != '\n') {
                         next();
                     }
 
                     continue;
                 }
 
-                if (pointer + 1 < source.size() && source[pointer] == '/' && source[pointer + 1] == '#') {
-                    std::string_view moduleNameStart = moduleName;
-                    std::uint32_t lineStart = line, lexposStart = lexpos;
+                if (sourceLocation.pointer + 1 < source.size() && source[sourceLocation.pointer] == '/' && source[sourceLocation.pointer + 1] == '#') {
+                    SourceLocation location = sourceLocation;
 
                     next();
                     next();
 
                     std::size_t balance = 1;
 
-                    while (pointer < source.size() && balance) {
-                        if (pointer + 1 < source.size() && source[pointer] == '/' && source[pointer + 1] == '#') {
+                    while (sourceLocation.pointer < source.size() && balance) {
+                        if (sourceLocation.pointer + 1 < source.size() && source[sourceLocation.pointer] == '/' && source[sourceLocation.pointer + 1] == '#') {
                             next();
                             next();
 
                             ++balance;
-                        } else if (pointer + 1 < source.size() && source[pointer] == '#' && source[pointer + 1] == '/') {
+                        } else if (sourceLocation.pointer + 1 < source.size() && source[sourceLocation.pointer] == '#' && source[sourceLocation.pointer + 1] == '/') {
                             next();
                             next();
 
@@ -56,7 +55,7 @@ namespace fosl {
                     }
 
                     if (balance) {
-                        throw Error(Error::Type::Lexical, Error::Priority::Fatal, moduleNameStart, lineStart, lexposStart, "unterminated comment.");
+                        throw Error(Error::Type::Lexical, location, "unterminated comment.");
                     }
 
                     continue;
@@ -70,18 +69,15 @@ namespace fosl {
             skip();
 
             Token token;
-            token.location.moduleName = moduleName;
-            token.location.pointer = pointer;
-            token.location.line = line;
-            token.location.lexpos = lexpos;
+            token.location = sourceLocation;
             token.length = 0;
             token.text = std::string_view(token.text.data(), 0);
-            std::size_t start = pointer;
+            std::size_t start = sourceLocation.pointer;
 
-            if (pointer >= source.size() || !source[pointer]) {
+            if (sourceLocation.pointer >= source.size() || !source[sourceLocation.pointer]) {
                 token.type = TokenType::Eoi;
             } else {
-                switch (source[pointer]) {
+                switch (source[sourceLocation.pointer]) {
                     case '(': {
                         next();
                         token.type = TokenType::LeftParen;
@@ -122,7 +118,7 @@ namespace fosl {
 
                         next();
 
-                        if (pointer < source.size() && source[pointer] == '.') {
+                        if (sourceLocation.pointer < source.size() && source[sourceLocation.pointer] == '.') {
                             next();
                             token.type = TokenType::DotDot;
                             break;
@@ -146,7 +142,7 @@ namespace fosl {
 
                     case ':': {
                         next();
-                        if (pointer < source.size() && source[pointer] == ':') {
+                        if (sourceLocation.pointer < source.size() && source[sourceLocation.pointer] == ':') {
                             next();
                             token.type = TokenType::ColonColon;
                             break;
@@ -157,7 +153,7 @@ namespace fosl {
 
                     case '+': {
                         next();
-                        if (pointer < source.size() && source[pointer] == '=') {
+                        if (sourceLocation.pointer < source.size() && source[sourceLocation.pointer] == '=') {
                             next();
                             token.type = TokenType::AddEqual;
                             break;
@@ -168,12 +164,12 @@ namespace fosl {
 
                     case '-': {
                         next();
-                        if (pointer < source.size()) {
-                            if (source[pointer] == '>') {
+                        if (sourceLocation.pointer < source.size()) {
+                            if (source[sourceLocation.pointer] == '>') {
                                 next();
                                 token.type = TokenType::Arrow;
                                 break;
-                            } else if (source[pointer] == '=') {
+                            } else if (source[sourceLocation.pointer] == '=') {
                                 next();
                                 token.type = TokenType::SubtractEqual;
                                 break;
@@ -185,7 +181,7 @@ namespace fosl {
 
                     case '%': {
                         next();
-                        if (pointer < source.size() && source[pointer] == '=') {
+                        if (sourceLocation.pointer < source.size() && source[sourceLocation.pointer] == '=') {
                             next();
                             token.type = TokenType::ModuloEqual;
                             break;
@@ -196,7 +192,7 @@ namespace fosl {
 
                     case '*': {
                         next();
-                        if (pointer < source.size() && source[pointer] == '=') {
+                        if (sourceLocation.pointer < source.size() && source[sourceLocation.pointer] == '=') {
                             next();
                             token.type = TokenType::MultiplyEqual;
                             break;
@@ -207,7 +203,7 @@ namespace fosl {
 
                     case '/': {
                         next();
-                        if (pointer < source.size() && source[pointer] == '=') {
+                        if (sourceLocation.pointer < source.size() && source[sourceLocation.pointer] == '=') {
                             next();
                             token.type = TokenType::DivideEqual;
                             break;
@@ -218,12 +214,12 @@ namespace fosl {
 
                     case '&': {
                         next();
-                        if (pointer < source.size()) {
-                            if (source[pointer] == '=') {
+                        if (sourceLocation.pointer < source.size()) {
+                            if (source[sourceLocation.pointer] == '=') {
                                 next();
                                 token.type = TokenType::BitAndEqual;
                                 break;
-                            } else if (source[pointer] == '&') {
+                            } else if (source[sourceLocation.pointer] == '&') {
                                 next();
                                 token.type = TokenType::LogicalAnd;
                                 break;
@@ -235,7 +231,7 @@ namespace fosl {
 
                     case '^': {
                         next();
-                        if (pointer < source.size() && source[pointer] == '=') {
+                        if (sourceLocation.pointer < source.size() && source[sourceLocation.pointer] == '=') {
                             next();
                             token.type = TokenType::BitXorEqual;
                             break;
@@ -246,12 +242,12 @@ namespace fosl {
 
                     case '|': {
                         next();
-                        if (pointer < source.size()) {
-                            if (source[pointer] == '=') {
+                        if (sourceLocation.pointer < source.size()) {
+                            if (source[sourceLocation.pointer] == '=') {
                                 next();
                                 token.type = TokenType::BitOrEqual;
                                 break;
-                            } else if (source[pointer] == '|') {
+                            } else if (source[sourceLocation.pointer] == '|') {
                                 next();
                                 token.type = TokenType::LogicalOr;
                                 break;
@@ -263,17 +259,17 @@ namespace fosl {
 
                     case '<': {
                         next();
-                        if (pointer < source.size()) {
-                            if (source[pointer] == '<') {
+                        if (sourceLocation.pointer < source.size()) {
+                            if (source[sourceLocation.pointer] == '<') {
                                 next();
-                                if (pointer < source.size() && source[pointer] == '=') {
+                                if (sourceLocation.pointer < source.size() && source[sourceLocation.pointer] == '=') {
                                     next();
                                     token.type = TokenType::BitShiftLeftEqual;
                                     break;
                                 }
                                 token.type = TokenType::BitShiftLeft;
                                 break;
-                            } else if (source[pointer] == '=') {
+                            } else if (source[sourceLocation.pointer] == '=') {
                                 next();
                                 token.type = TokenType::LogicalLessThanEqual;
                                 break;
@@ -285,17 +281,17 @@ namespace fosl {
 
                     case '>': {
                         next();
-                        if (pointer < source.size()) {
-                            if (source[pointer] == '>') {
+                        if (sourceLocation.pointer < source.size()) {
+                            if (source[sourceLocation.pointer] == '>') {
                                 next();
-                                if (pointer < source.size() && source[pointer] == '=') {
+                                if (sourceLocation.pointer < source.size() && source[sourceLocation.pointer] == '=') {
                                     next();
                                     token.type = TokenType::BitShiftRightEqual;
                                     break;
                                 }
                                 token.type = TokenType::BitShiftRight;
                                 break;
-                            } else if (source[pointer] == '=') {
+                            } else if (source[sourceLocation.pointer] == '=') {
                                 next();
                                 token.type = TokenType::LogicalGreaterThanEqual;
                                 break;
@@ -311,12 +307,12 @@ namespace fosl {
                         break;
                         case '=':
                         next();
-                        if (pointer < source.size()) {
-                            if (source[pointer] == '>') {
+                        if (sourceLocation.pointer < source.size()) {
+                            if (source[sourceLocation.pointer] == '>') {
                                 next();
                                 token.type = TokenType::BigArrow;
                                 break;
-                            } else if (source[pointer] == '=') {
+                            } else if (source[sourceLocation.pointer] == '=') {
                                 next();
                                 token.type = TokenType::LogicalEqual;
                                 break;
@@ -328,7 +324,7 @@ namespace fosl {
 
                     case '!': {
                         next();
-                        if (pointer < source.size() && source[pointer] == '=') {
+                        if (sourceLocation.pointer < source.size() && source[sourceLocation.pointer] == '=') {
                             next();
                             token.type = TokenType::LogicalNotEqual;
                             break;
@@ -339,18 +335,17 @@ namespace fosl {
 
                     case '\'':
                     case '"': {
-                        char delim = source[pointer];
+                        char delim = source[sourceLocation.pointer];
 
-                        std::string_view moduleNameStart = moduleName;
-                        std::uint32_t lineStart = line, lexposStart = lexpos;
+                        SourceLocation location = sourceLocation;
 
                         next();
                         std::size_t length = 0;
-                        while (pointer < source.size() && source[pointer] != delim) {
-                            if (source[pointer] == '\\') {
+                        while (sourceLocation.pointer < source.size() && source[sourceLocation.pointer] != delim) {
+                            if (source[sourceLocation.pointer] == '\\') {
                                 next();
 
-                                switch (source[pointer]) {
+                                switch (source[sourceLocation.pointer]) {
                                     case 'f': {
                                         next();
                                         textBuffer[length++] = '\f';
@@ -377,20 +372,20 @@ namespace fosl {
 
                                     case 'x': {
                                         next();
-                                        if (pointer + 1 >= source.size()) {
-                                            throw Error(Error::Type::Lexical, Error::Priority::Fatal, moduleName, line, lexpos, "\\x must be followed by exactly two hex digits.");
+                                        if (sourceLocation.pointer + 1 >= source.size()) {
+                                            throw Error(Error::Type::Lexical, sourceLocation, "\\x must be followed by exactly two hex digits.");
                                         }
 
                                         std::uint8_t hex = 0;
                                         for (std::size_t i = 0; i < 2; i++) {
                                             hex *= 16;
 
-                                            if (std::tolower(source[pointer]) >= 'a' && std::tolower(source[pointer]) <= 'f') {
-                                                hex += 10 + (source[pointer] - 'a');
-                                            } else if (source[pointer] >= '0' && source[pointer] <= '9') {
-                                                hex += source[pointer] - '0';
+                                            if (std::tolower(source[sourceLocation.pointer]) >= 'a' && std::tolower(source[sourceLocation.pointer]) <= 'f') {
+                                                hex += 10 + (source[sourceLocation.pointer] - 'a');
+                                            } else if (source[sourceLocation.pointer] >= '0' && source[sourceLocation.pointer] <= '9') {
+                                                hex += source[sourceLocation.pointer] - '0';
                                             } else {
-                                                throw Error(Error::Type::Lexical, Error::Priority::Fatal, moduleName, line, lexpos, fmt::format("invalid hex digit '{}'.", source[pointer]));
+                                                throw Error(Error::Type::Lexical, sourceLocation, fmt::format("invalid hex digit '{}'.", source[sourceLocation.pointer]));
                                             }
 
                                             next();
@@ -402,20 +397,20 @@ namespace fosl {
 
                                     case 'u': {
                                         next();
-                                        if (pointer + 1 >= source.size()) {
-                                            throw Error(Error::Type::Lexical, Error::Priority::Fatal, moduleName, line, lexpos, "\\u must be followed by exactly two hex digits.");
+                                        if (sourceLocation.pointer + 1 >= source.size()) {
+                                            throw Error(Error::Type::Lexical, sourceLocation, "\\u must be followed by exactly two hex digits.");
                                         }
 
                                         std::uint16_t hex = 0;
                                         for (std::size_t i = 0; i < 4; i++) {
                                             hex *= 16;
 
-                                            if (std::tolower(source[pointer]) >= 'a' && std::tolower(source[pointer]) <= 'f') {
-                                                hex += 10 + (source[pointer] - 'a');
-                                            } else if (source[pointer] >= '0' && source[pointer] <= '9') {
-                                                hex += source[pointer] - '0';
+                                            if (std::tolower(source[sourceLocation.pointer]) >= 'a' && std::tolower(source[sourceLocation.pointer]) <= 'f') {
+                                                hex += 10 + (source[sourceLocation.pointer] - 'a');
+                                            } else if (source[sourceLocation.pointer] >= '0' && source[sourceLocation.pointer] <= '9') {
+                                                hex += source[sourceLocation.pointer] - '0';
                                             } else {
-                                                throw Error(Error::Type::Lexical, Error::Priority::Fatal, moduleName, line, lexpos, fmt::format("invalid hex digit '{}'.", source[pointer]));
+                                                throw Error(Error::Type::Lexical, sourceLocation, fmt::format("invalid hex digit '{}'.", source[sourceLocation.pointer]));
                                             }
 
                                             next();
@@ -427,20 +422,20 @@ namespace fosl {
 
                                     case 'U': {
                                         next();
-                                        if (pointer + 1 >= source.size()) {
-                                            throw Error(Error::Type::Lexical, Error::Priority::Fatal, moduleName, line, lexpos, "\\U must be followed by exactly two hex digits.");
+                                        if (sourceLocation.pointer + 1 >= source.size()) {
+                                            throw Error(Error::Type::Lexical, sourceLocation, "\\U must be followed by exactly two hex digits.");
                                         }
 
                                         std::uint32_t hex = 0;
                                         for (std::size_t i = 0; i < 8; i++) {
                                             hex *= 16;
 
-                                            if (std::tolower(source[pointer]) >= 'a' && std::tolower(source[pointer]) <= 'f') {
-                                                hex += 10 + (source[pointer] - 'a');
-                                            } else if (source[pointer] >= '0' && source[pointer] <= '9') {
-                                                hex += source[pointer] - '0';
+                                            if (std::tolower(source[sourceLocation.pointer]) >= 'a' && std::tolower(source[sourceLocation.pointer]) <= 'f') {
+                                                hex += 10 + (source[sourceLocation.pointer] - 'a');
+                                            } else if (source[sourceLocation.pointer] >= '0' && source[sourceLocation.pointer] <= '9') {
+                                                hex += source[sourceLocation.pointer] - '0';
                                             } else {
-                                                throw Error(Error::Type::Lexical, Error::Priority::Fatal, moduleName, line, lexpos, fmt::format("invalid hex digit '{}'.", source[pointer]));
+                                                throw Error(Error::Type::Lexical, sourceLocation, fmt::format("invalid hex digit '{}'.", source[sourceLocation.pointer]));
                                             }
 
                                             next();
@@ -451,20 +446,20 @@ namespace fosl {
                                     }
 
                                     default: {
-                                        char c = source[pointer];
+                                        char c = source[sourceLocation.pointer];
                                         next();
                                         textBuffer[length++] = c;
                                         break;
                                     }
                                 }
                             } else {
-                                textBuffer[length++] = source[pointer];
+                                textBuffer[length++] = source[sourceLocation.pointer];
                                 next();
                             }
                         }
 
-                        if (pointer >= source.size() || source[pointer] != delim) {
-                            throw Error(Error::Type::Lexical, Error::Priority::Fatal, moduleNameStart, lineStart, lexposStart, "unterminated literal.");
+                        if (sourceLocation.pointer >= source.size() || source[sourceLocation.pointer] != delim) {
+                            throw Error(Error::Type::Lexical, sourceLocation, "unterminated literal.");
                         }
 
                         next();
@@ -479,10 +474,10 @@ namespace fosl {
                     }
 
                     default:
-                    if (std::isalpha(source[pointer]) || source[pointer] == '_') {
-                        std::size_t begin = pointer;
+                    if (std::isalpha(source[sourceLocation.pointer]) || source[sourceLocation.pointer] == '_') {
+                        std::size_t begin = sourceLocation.pointer;
 
-                        while (pointer < source.size() && (std::isalnum(source[pointer]) || source[pointer] == '_')) {
+                        while (sourceLocation.pointer < source.size() && (std::isalnum(source[sourceLocation.pointer]) || source[sourceLocation.pointer] == '_')) {
                             next();
                         }
 
@@ -583,67 +578,67 @@ namespace fosl {
                         name:
                         token.type = TokenType::Name;
                         break;
-                    } else if (std::isdigit(source[pointer])) {
+                    } else if (std::isdigit(source[sourceLocation.pointer])) {
                         std::uint64_t &integer = *(std::uint64_t*)(&token.litrl);
                         double &decimal = *(double*)(&token.litrl);
 
                         integer = 0;
 
-                        if (pointer + 2 < source.size() && source[pointer] == '0' && std::tolower(source[pointer + 1]) == 'x' && std::isxdigit(source[pointer + 2])) {
+                        if (sourceLocation.pointer + 2 < source.size() && source[sourceLocation.pointer] == '0' && std::tolower(source[sourceLocation.pointer + 1]) == 'x' && std::isxdigit(source[sourceLocation.pointer + 2])) {
                             next();
                             next();
 
-                            while (pointer < source.size() && std::isxdigit(source[pointer])) {
+                            while (sourceLocation.pointer < source.size() && std::isxdigit(source[sourceLocation.pointer])) {
                                 integer *= 16;
 
-                                if (std::isalpha(source[pointer])) {
-                                    integer += 10 + (std::tolower(source[pointer]) - 'a');
-                                } else if (std::isdigit(source[pointer])) {
-                                    integer += source[pointer] - '0';
+                                if (std::isalpha(source[sourceLocation.pointer])) {
+                                    integer += 10 + (std::tolower(source[sourceLocation.pointer]) - 'a');
+                                } else if (std::isdigit(source[sourceLocation.pointer])) {
+                                    integer += source[sourceLocation.pointer] - '0';
                                 }
 
                                 next();
                             }
 
                             token.type = TokenType::Integer;
-                        } else if (pointer + 2 < source.size() && source[pointer] == '0' && std::tolower(source[pointer + 1]) == 'o' && (source[pointer + 2] >= '0' && source[pointer + 2] <= '7')) {
+                        } else if (sourceLocation.pointer + 2 < source.size() && source[sourceLocation.pointer] == '0' && std::tolower(source[sourceLocation.pointer + 1]) == 'o' && (source[sourceLocation.pointer + 2] >= '0' && source[sourceLocation.pointer + 2] <= '7')) {
                             next();
                             next();
 
-                            while (pointer < source.size() && (source[pointer] >= '0' && source[pointer] <= '7')) {
+                            while (sourceLocation.pointer < source.size() && (source[sourceLocation.pointer] >= '0' && source[sourceLocation.pointer] <= '7')) {
                                 integer *= 8;
-                                integer += source[pointer] - '0';
+                                integer += source[sourceLocation.pointer] - '0';
 
                                 next();
                             }
 
                             token.type = TokenType::Integer;
-                        } else if (pointer + 2 < source.size() && source[pointer] == '0' && std::tolower(source[pointer + 1] == 'b') && (source[pointer + 2] == '0' || source[pointer + 2] == '1')) {
+                        } else if (sourceLocation.pointer + 2 < source.size() && source[sourceLocation.pointer] == '0' && std::tolower(source[sourceLocation.pointer + 1] == 'b') && (source[sourceLocation.pointer + 2] == '0' || source[sourceLocation.pointer + 2] == '1')) {
                             next();
                             next();
 
-                            while (pointer < source.size() && (source[pointer] == '0' || source[pointer] == '1')) {
+                            while (sourceLocation.pointer < source.size() && (source[sourceLocation.pointer] == '0' || source[sourceLocation.pointer] == '1')) {
                                 integer *= 2;
-                                integer += source[pointer] - '0';
+                                integer += source[sourceLocation.pointer] - '0';
 
                                 next();
                             }
 
                             token.type = TokenType::Integer;
                         } else {
-                            while (pointer < source.size() && std::isdigit(source[pointer])) {
+                            while (sourceLocation.pointer < source.size() && std::isdigit(source[sourceLocation.pointer])) {
                                 integer *= 10;
-                                integer += source[pointer] - '0';
+                                integer += source[sourceLocation.pointer] - '0';
                                 next();
                             }
 
-                            if (pointer + 1 < source.size() && source[pointer] == '.' && std::isdigit(source[pointer + 1])) {
+                            if (sourceLocation.pointer + 1 < source.size() && source[sourceLocation.pointer] == '.' && std::isdigit(source[sourceLocation.pointer + 1])) {
                                 next();
                                 double fractional = 0, weight = 1;
 
-                                while (pointer < source.size() && std::isdigit(source[pointer])) {
+                                while (sourceLocation.pointer < source.size() && std::isdigit(source[sourceLocation.pointer])) {
                                     weight /= 10;
-                                    fractional += (source[pointer] - '0') * weight;
+                                    fractional += (source[sourceLocation.pointer] - '0') * weight;
                                     next();
                                 }
 
@@ -656,22 +651,25 @@ namespace fosl {
                             break;
                         }
                     } else {
-                        throw Error(Error::Type::Lexical, Error::Priority::Fatal, moduleName, line, lexpos, "invalid token");
+                        throw Error(Error::Type::Lexical, sourceLocation, "invalid token");
                         break;
                     }
                 }
             }
 
-            token.length = pointer - start;
+            token.length = sourceLocation.pointer - start;
             if (!token.text.data())
                 token.text = std::string_view(&source[start], token.text.size());
             if (!token.text.size()) token.text = std::string_view(token.text.data(), token.length);
             tokens.push_back(token);
         }
 
-        void Lexer::initFromSource(const std::string_view &moduleName, const std::string_view &source) {
-            this->moduleName = moduleName;
+        void Lexer::initFromSource(const std::string &moduleName, const std::string_view &source) {
             this->source = source;
+
+            sourceLocation.moduleName = moduleName;
+            sourceLocation.line = 1;
+            sourceLocation.lexpos = 1;
         }
 
         void Lexer::initFromFile(const std::string &filepath) {
@@ -690,63 +688,15 @@ namespace fosl {
         }
 
         const Token &Lexer::peek(std::size_t count) {
-            while (step + count >= tokens.size()) {
+            while (count >= tokens.size()) {
                 once();
             }
 
-            return tokens[step + count];
+            return tokens[count];
         }
 
         void Lexer::eat(std::size_t count) {
-            tokens.erase(tokens.begin() + step, tokens.begin() + count + step);
-        }
-
-        void Lexer::setLine(std::uint32_t line) {
-            this->line = line;
-        }
-
-        void Lexer::setLexpos(std::uint32_t lexpos) {
-            this->lexpos = lexpos;
-        }
-
-        void Lexer::setPointer(std::size_t pointer) {
-            this->pointer = pointer;
-        }
-
-        void Lexer::setStep(std::size_t step) {
-            this->step = step;
-        }
-
-        void Lexer::setModuleName(const std::string_view &moduleName) {
-            this->moduleName = moduleName;
-        }
-
-        void Lexer::setSource(const std::string_view &source) {
-            this->source = source;
-        }
-
-        std::uint32_t Lexer::getLine() const {
-            return line;
-        }
-
-        std::uint32_t Lexer::getLexpos() const {
-            return lexpos;
-        }
-
-        std::size_t Lexer::getPointer() const {
-            return pointer;
-        }
-
-        std::size_t Lexer::getStep() const {
-            return step;
-        }
-
-        const std::string &Lexer::getModuleName() const {
-            return moduleName;
-        }
-
-        const std::string &Lexer::getSource() const {
-            return source;
+            tokens.erase(tokens.begin(), tokens.begin() + count);
         }
     }
 }

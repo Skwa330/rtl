@@ -1,6 +1,6 @@
-#include "fosl/parser/AST.h"
+#include "lang/parser/AST.h"
 
-namespace fosl {
+namespace lang {
     namespace parser {
         TypeDeclaration::TypeDeclaration(Tag tag) {
             this->tag = tag;

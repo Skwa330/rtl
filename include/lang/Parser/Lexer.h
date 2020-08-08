@@ -1,5 +1,5 @@
-#ifndef FOSL_PARSER_LEXER_H
-#define FOSL_PARSER_LEXER_H
+#ifndef LANG_PARSER_LEXER_H
+#define LANG_PARSER_LEXER_H
 
 #include <utility>
 #include <type_traits>
@@ -9,9 +9,9 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "fosl/Core/SourceLocation.h"
+#include "SourceLocation.h"
 
-namespace fosl {
+namespace lang {
     namespace parser {
         enum class TokenType {
             Invalid,
@@ -142,7 +142,7 @@ namespace fosl {
 
         struct Token {
             TokenType type;
-            core::SourceLocation location;
+            SourceLocation location;
             std::size_t length;
 
             std::string_view text;
@@ -152,14 +152,6 @@ namespace fosl {
 
         class Lexer {
         private:
-            std::size_t pointer = 0;
-            std::uint32_t line = 1, lexpos = 1;
-
-            std::size_t step = 0;
-
-            std::string moduleName;
-            std::string source;
-
             char textBuffer[8192];
 
             std::vector < Token > tokens;
@@ -169,34 +161,17 @@ namespace fosl {
 
             void once();
         public:
-            void initFromSource(const std::string_view & moduleName, const std::string_view & source);
+            SourceLocation sourceLocation;
+            std::string source;
+
+            void initFromSource(const std::string & moduleName, const std::string_view & source);
             void initFromFile(const std::string & filepath);
             // We are using a std::string ^^ here because the filepath has to be null-terminated
 
             const Token & peek(std::size_t count = 0);
             void eat(std::size_t count = 1);
-
-            void setLine(std::uint32_t line);
-            void setLexpos(std::uint32_t lexpos);
-
-            void setPointer(std::size_t pointer);
-
-            void setStep(std::size_t step);
-
-            void setModuleName(const std::string_view & moduleName);
-            void setSource(const std::string_view & source);
-
-            std::uint32_t getLine() const;
-            std::uint32_t getLexpos() const;
-
-            std::size_t getPointer() const;
-
-            std::size_t getStep() const;
-
-            const std::string & getModuleName() const;
-            const std::string & getSource() const;
         };
     }
 }
 
-#endif /* FOSL_PARSER_LEXER_H */
+#endif /* LANG_PARSER_LEXER_H */
