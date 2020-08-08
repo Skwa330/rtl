@@ -1,6 +1,7 @@
 #ifndef FOSL_PARSER_AST_H
 #define FOSL_PARSER_AST_H
 
+#include <string_view>
 #include <string>
 #include <unordered_map>
 #include <algorithm>
@@ -71,7 +72,7 @@ namespace fosl {
 
         class ASTNode {
         public:
-            std::string moduleName;
+            std::string_view moduleName;
             std::uint32_t line, lexpos;
 
             virtual ASTType getType() const = 0;
@@ -204,9 +205,7 @@ namespace fosl {
         public:
             ASTLiteral(std::uint64_t value);
             ASTLiteral(double value);
-            ASTLiteral(const std::string &value, Type ty = Type::String);
-            ASTLiteral(const char *value, std::size_t length, Type ty = Type::String);
-            ASTLiteral(const char *value, Type ty = Type::String);
+            ASTLiteral(const std::string_view &value, Type ty = Type::String);
             ASTLiteral(char value);
             ASTLiteral(bool value);
 

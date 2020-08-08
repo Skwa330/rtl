@@ -16,6 +16,7 @@
 #include <system_error>
 
 #include <type_traits>
+#include <array>
 
 #include "fosl/parser/Lexer.h"
 #include "fosl/parser/Parser.h"
@@ -23,6 +24,11 @@
 #include "fosl/Timing.h"
 
 #include "Dump.h"
+
+void *operator new(std::size_t size) {
+    fmt::print(stderr, "\033[33;1mallocation\033[0m\n");
+    return malloc(size);
+}
 
 void displayUsage(const std::string &programName) {
     fmt::print(stderr, "usage: {} [options...] inputFiles\n\n", programName);
@@ -38,8 +44,8 @@ void displayUsage(const std::string &programName) {
     fmt::print(stderr, "{}", info);
 }
 
-std::size_t getNthSubstr(std::size_t n, const std::string &s,
-               const std::string &p,
+std::size_t getNthSubstr(std::size_t n, const std::string_view &s,
+               const std::string_view &p,
                bool repeats = false) {
    std::size_t i = s.find(p);
    std::size_t adv = (repeats) ? 1 : p.length();
@@ -66,7 +72,7 @@ void colorizeTerminal() {
     #endif
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char **argv) {
     colorizeTerminal();
 
     std::string programName = *argv;
@@ -81,7 +87,7 @@ int main(int argc, char *argv[]) {
     bool emitObj = true;
     bool emitAssembly = false;
 
-    option longopts[] = {
+    std::array<option, 9> longopts {{
         { "help", ya_no_argument, nullptr, 'h' },
         { "compile", ya_no_argument, nullptr, 'c' },
         { "out", ya_required_argument, nullptr, 'o' },
@@ -91,10 +97,10 @@ int main(int argc, char *argv[]) {
         { "emit-obj", ya_no_argument, nullptr, 302 },
         { "emit-asm", ya_no_argument, nullptr, 303 },
         { nullptr, 0, nullptr, 0 }
-    };
+    }};
 
     int optv, longopt;
-    while ((optv = ya_getopt_long_only(argc, argv, "h?co:t:l:", longopts, &longopt)) != -1) {
+    while ((optv = ya_getopt_long_only(argc, argv, "h?co:t:l:", longopts.data(), &longopt)) != -1) {
         switch (optv) {
             case '?':
             case 'h': {

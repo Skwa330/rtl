@@ -31,7 +31,7 @@ namespace fosl {
                 }
 
                 if (pointer + 1 < source.size() && source[pointer] == '/' && source[pointer + 1] == '#') {
-                    std::string moduleNameStart = moduleName;
+                    std::string_view moduleNameStart = moduleName;
                     std::uint32_t lineStart = line, lexposStart = lexpos;
 
                     next();
@@ -74,9 +74,8 @@ namespace fosl {
             token.line = line;
             token.lexpos = lexpos;
             token.length = 0;
-            token.text.second = 0;
+            token.text = std::string_view(token.text.data(), 0);
             std::size_t start = pointer;
-            token.text = std::make_pair<const char *, std::size_t>(nullptr, 0);
 
             if (pointer >= source.size() || !source[pointer]) {
                 token.type = TokenType::Eoi;
@@ -331,10 +330,11 @@ namespace fosl {
                     case '"': {
                         char delim = source[pointer];
 
-                        std::string moduleNameStart = moduleName;
+                        std::string_view moduleNameStart = moduleName;
                         std::uint32_t lineStart = line, lexposStart = lexpos;
 
                         next();
+                        std::size_t length = 0;
                         while (pointer < source.size() && source[pointer] != delim) {
                             if (source[pointer] == '\\') {
                                 next();
@@ -342,25 +342,25 @@ namespace fosl {
                                 switch (source[pointer]) {
                                     case 'f': {
                                         next();
-                                        textBuffer[token.text.second++] = '\f';
+                                        textBuffer[length++] = '\f';
                                         break;
                                     }
 
                                     case 'n': {
                                         next();
-                                        textBuffer[token.text.second++] = '\n';
+                                        textBuffer[length++] = '\n';
                                         break;
                                     }
 
                                     case 'r': {
                                         next();
-                                        textBuffer[token.text.second++] = '\r';
+                                        textBuffer[length++] = '\r';
                                         break;
                                     }
 
                                     case 'v': {
                                         next();
-                                        textBuffer[token.text.second++] = '\v';
+                                        textBuffer[length++] = '\v';
                                         break;
                                     }
 
@@ -385,7 +385,7 @@ namespace fosl {
                                             next();
                                         }
 
-                                        textBuffer[token.text.second++] = *(char*)&hex;
+                                        textBuffer[length++] = *(char*)&hex;
                                         break;
                                     }
 
@@ -410,7 +410,7 @@ namespace fosl {
                                             next();
                                         }
 
-                                        textBuffer[token.text.second++] = *(char*)&hex;
+                                        textBuffer[length++] = *(char*)&hex;
                                         break;
                                     }
 
@@ -435,19 +435,19 @@ namespace fosl {
                                             next();
                                         }
 
-                                        textBuffer[token.text.second++] = *(char*)&hex;
+                                        textBuffer[length++] = *(char*)&hex;
                                         break;
                                     }
 
                                     default: {
                                         char c = source[pointer];
                                         next();
-                                        textBuffer[token.text.second++] = c;
+                                        textBuffer[length++] = c;
                                         break;
                                     }
                                 }
                             } else {
-                                textBuffer[token.text.second++] = source[pointer];
+                                textBuffer[length++] = source[pointer];
                                 next();
                             }
                         }
@@ -457,7 +457,7 @@ namespace fosl {
                         }
 
                         next();
-                        token.text.first = textBuffer;
+                        token.text = std::string_view(textBuffer, length);
                         if (delim == '"') {
                             token.type = TokenType::String;
                         } else if (delim == '\'') {
@@ -469,16 +469,17 @@ namespace fosl {
 
                     default:
                     if (std::isalpha(source[pointer]) || source[pointer] == '_') {
+                        std::size_t begin = pointer;
+
                         while (pointer < source.size() && (std::isalnum(source[pointer]) || source[pointer] == '_')) {
-                            textBuffer[token.text.second++] = source[pointer];
                             next();
                         }
 
                         auto is = [&](const char *s) {
-                            return std::memcmp(textBuffer, s, token.text.second * sizeof(char)) == 0;
+                            return std::memcmp(textBuffer, s, token.text.size() * sizeof(char)) == 0;
                         };
 
-                        switch (token.text.second) {
+                        switch (token.text.size()) {
                             case 2: {
                                 if (is("if")) token.type = TokenType::KwIf;
                                 else if (is("for")) token.type = TokenType::KwFor;
@@ -651,13 +652,13 @@ namespace fosl {
             }
 
             token.length = pointer - start;
-            if (!token.text.second) token.text.second = token.length;
-            if (!token.text.first)
-                token.text.first = &source[start];
+            if (!token.text.size()) token.text = std::string_view(token.text.data(), token.length);
+            if (!token.text.data())
+                token.text = std::string_view(&source[start], token.text.size());
             tokens.push_back(token);
         }
 
-        void Lexer::initFromSource(const std::string &moduleName, const std::string &source) {
+        void Lexer::initFromSource(const std::string &moduleName, const std::string_view &source) {
             this->moduleName = moduleName;
             this->source = source;
         }
@@ -709,7 +710,7 @@ namespace fosl {
             this->moduleName = moduleName;
         }
 
-        void Lexer::setSource(const std::string &source) {
+        void Lexer::setSource(const std::string_view &source) {
             this->source = source;
         }
 

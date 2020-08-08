@@ -574,7 +574,7 @@ namespace fosl {
                         throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->getModuleName(), line, lexpos, "expected name after '.'.");
                     }
 
-                    auto n = std::make_shared<ASTLiteral>(lexer->peek().text.first, lexer->peek().text.second, ASTLiteral::Type::Name);
+                    auto n = std::make_shared<ASTLiteral>(lexer->peek().text, ASTLiteral::Type::Name);
                     n->moduleName = lexer->getModuleName();
                     n->line = lexer->peek().line;
                     n->lexpos = lexer->peek().lexpos;
@@ -612,7 +612,7 @@ namespace fosl {
                 lexer->eat();
                 return result;
             } else if (lexer->peek().type == TokenType::String) {
-                auto result = std::make_shared<ASTLiteral>(lexer->peek().text.first, lexer->peek().text.second);
+                auto result = std::make_shared<ASTLiteral>(lexer->peek().text);
                 result->moduleName = lexer->getModuleName();
                 result->line = line;
                 result->lexpos = lexpos;
@@ -620,8 +620,8 @@ namespace fosl {
                 lexer->eat();
                 return result;
             } else if (lexer->peek().type == TokenType::Character) {
-                if (lexer->peek().text.second > 1) throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().moduleName, lexer->peek().line, lexer->peek().lexpos, "invalid character literal.");
-                auto result = std::make_shared<ASTLiteral>(lexer->peek().text.first[0]);
+                if (lexer->peek().text.size() > 1) throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().moduleName, lexer->peek().line, lexer->peek().lexpos, "invalid character literal.");
+                auto result = std::make_shared<ASTLiteral>(lexer->peek().text.data()[0]);
                 result->moduleName = lexer->getModuleName();
                 result->line = line;
                 result->lexpos = lexpos;
@@ -647,7 +647,7 @@ namespace fosl {
             if (lexer->peek().type == TokenType::Name) {
                 std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
 
-                std::shared_ptr<ASTNode> result = std::make_shared<ASTLiteral>(lexer->peek().text.first, lexer->peek().text.second, ASTLiteral::Type::Name);
+                std::shared_ptr<ASTNode> result = std::make_shared<ASTLiteral>(lexer->peek().text, ASTLiteral::Type::Name);
                 result->moduleName = lexer->getModuleName();
                 result->line = line;
                 result->lexpos = lexpos;
@@ -658,7 +658,7 @@ namespace fosl {
                 lexer->eat();
 
                 while (lexer->peek().type == TokenType::ColonColon && lexer->peek(1).type == TokenType::Name) {
-                    std::shared_ptr<ASTNode> second = std::make_shared<ASTLiteral>(lexer->peek(1).text.first, lexer->peek(1).text.second, ASTLiteral::Type::Name);
+                    std::shared_ptr<ASTNode> second = std::make_shared<ASTLiteral>(lexer->peek(1).text, ASTLiteral::Type::Name);
                     lexer->eat(2);
 
                     result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::NamespaceResolution, result, second);

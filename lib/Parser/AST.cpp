@@ -165,19 +165,9 @@ namespace fosl {
             *(double*)&this->value = value;
         }
 
-        ASTLiteral::ASTLiteral(const std::string &value, Type ty) {
+        ASTLiteral::ASTLiteral(const std::string_view &value, Type ty) {
             literalType = ty;
-            new (&this->value) std::string(value);
-        }
-
-        ASTLiteral::ASTLiteral(const char *value, std::size_t length, Type ty) {
-            literalType = ty;
-            new (&this->value) std::string(value, length);
-        }
-
-        ASTLiteral::ASTLiteral(const char *value, Type ty) {
-            literalType = ty;
-            new (&this->value) std::string(value);
+            new (&this->value) std::string(value.data(), value.size());
         }
 
         ASTLiteral::ASTLiteral(char value) {

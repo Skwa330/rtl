@@ -1,7 +1,7 @@
 #include "fosl/Error.h"
 
 namespace fosl {
-    Error::Error(Type type, Priority priority, const std::string &moduleName, std::uint32_t line, std::uint32_t lexpos, const std::string &message) {
+    Error::Error(Type type, Priority priority, const std::string_view &moduleName, std::uint32_t line, std::uint32_t lexpos, const std::string_view &message) {
         this->type = type;
         this->priority = priority;
 
@@ -19,7 +19,7 @@ namespace fosl {
         return priority;
     }
 
-    const std::string &Error::getModuleName() const {
+    const std::string_view &Error::getModuleName() const {
         return moduleName;
     }
 

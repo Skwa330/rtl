@@ -4,7 +4,7 @@
 
 namespace fosl {
     namespace compiler {
-        std::string escapeString(const std::string &s) {
+        std::string escapeString(const std::string_view &s) {
             std::string result;
 
             for (char c : s) {

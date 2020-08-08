@@ -138,11 +138,11 @@ namespace fosl {
 
         struct Token {
             TokenType type;
-            std::string moduleName;
+            std::string_view moduleName;
             std::uint32_t line, lexpos;
             std::size_t length;
 
-            std::pair<const char *, std::size_t> text;
+            std::string_view text;
 
             std::aligned_union<0, std::uint64_t, double>::type litrl;
         };
@@ -166,7 +166,7 @@ namespace fosl {
 
             void once();
         public:
-            void initFromSource(const std::string &moduleName, const std::string &source);
+            void initFromSource(const std::string &moduleName, const std::string_view &source);
             void initFromFile(const std::string &filepath);
 
             const Token &peek(std::size_t count = 0);
@@ -180,7 +180,7 @@ namespace fosl {
             void setStep(std::size_t step);
 
             void setModuleName(const std::string &moduleName);
-            void setSource(const std::string &source);
+            void setSource(const std::string_view &source);
 
             std::uint32_t getLine() const;
             std::uint32_t getLexpos() const;

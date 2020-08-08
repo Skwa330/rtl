@@ -2,7 +2,7 @@
 #define _SDC_ERROR_H_
 
 #include <exception>
-#include <string>
+#include <string_view>
 
 #include <cstdint>
 
@@ -26,17 +26,17 @@ namespace fosl {
         Type type;
         Priority priority;
 
-        std::string moduleName;
+        std::string_view moduleName;
         std::uint32_t line, lexpos;
 
         std::string message;
     public:
-        Error(Type type, Priority priority, const std::string &moduleName, std::uint32_t line, std::uint32_t lexpos, const std::string &message);
+        Error(Type type, Priority priority, const std::string_view &moduleName, std::uint32_t line, std::uint32_t lexpos, const std::string_view &message);
 
         Type getType() const;
         Priority getPriority() const;
 
-        const std::string &getModuleName() const;
+        const std::string_view &getModuleName() const;
 
         std::uint32_t getLine() const;
         std::uint32_t getLexpos() const;
