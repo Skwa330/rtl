@@ -1,5 +1,5 @@
 #include "fosl/parser/Parser.h"
-#include "fosl/Error.h"
+#include "fosl/Core/Error.h"
 #include <fmt/format.h>
 
 namespace fosl {
@@ -197,9 +197,9 @@ namespace fosl {
         std::shared_ptr<ASTNode> Parser::parseAssignment() {
             std::shared_ptr<ASTNode> result = parseLogicalOr();
 
-            std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
+            core::SourceLocation location = lexer->peek().location;
 
-            if ((lexer->peek().type == TokenType::Equal || lexer->peek().type == TokenType::AddEqual || lexer->peek().type == TokenType::SubtractEqual || lexer->peek().type == TokenType::ModuloEqual || lexer->peek().type == TokenType::MultiplyEqual || lexer->peek().type == TokenType::DivideEqual || lexer->peek().type == TokenType::BitAndEqual || lexer->peek().type == TokenType::BitXorEqual || lexer->peek().type == TokenType::BitOrEqual || lexer->peek().type == TokenType::BitShiftLeftEqual || lexer->peek().type == TokenType::BitShiftRightEqual) && std::get<1>(matchAssignment(1))) {
+            if ((lexer->peek().type == TokenType::Equal || lexer->peek().type == TokenType::AddEqual || lexer->peek().type == TokenType::SubtractEqual || lexer->peek().type == TokenType::ModuloEqual || lexer->peek().type == TokenType::MultiplyEqual || lexer->peek().type == TokenType::DivideEqual || lexer->peek().type == TokenType::BitAndEqual || lexer->peek().type == TokenType::BitXorEqual || lexer->peek().type == TokenType::BitOrEqual || lexer->peek().type == TokenType::BitShiftLeftEqual || lexer->peek().type == TokenType::BitShiftRightEqual) && matchAssignment(1).second) {
                 ASTBinaryOperator::Type intermTy;
                 if (lexer->peek().type == TokenType::AddEqual) intermTy = ASTBinaryOperator::Type::Add;
                 else if (lexer->peek().type == TokenType::SubtractEqual) intermTy = ASTBinaryOperator::Type::Subtract;
@@ -213,21 +213,21 @@ namespace fosl {
                 else if (lexer->peek().type == TokenType::BitShiftRightEqual) intermTy = ASTBinaryOperator::Type::BitShiftRight;
                 else {
                     lexer->eat();
+
+                    if (!matchAssignment().second) {
+                        throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().location.moduleName, lexer->peek().location.line, lexer->peek().location.lexpos, "invalid secondary operand.");
+                    }
+
                     result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::Assign, result, parseAssignment());
-                    result->moduleName = lexer->getModuleName();
-                    result->line = line;
-                    result->lexpos = lexpos;
+                    result->location = location;
                     return result;
                 }
 
-                line = lexer->peek().line;
-                lexpos = lexer->peek().lexpos;
+                location = lexer->peek().location;
                 lexer->eat();
 
                 auto interm = std::make_shared<ASTBinaryOperator>(intermTy, result, parseAssignment());
-                interm->moduleName = lexer->getModuleName();
-                interm->line = line;
-                interm->lexpos = lexpos;
+                interm->location = location;
 
                 result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::Assign, result, interm);
 
@@ -240,18 +240,19 @@ namespace fosl {
         std::shared_ptr<ASTNode> Parser::parseLogicalOr() {
             std::shared_ptr<ASTNode> result = parseLogicalAnd();
 
-            std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
+            core::SourceLocation location = lexer->peek().location;
 
-            while (lexer->peek().type == TokenType::LogicalOr && std::get<1>(matchLogicalAnd(1))) {
+            while (lexer->peek().type == TokenType::LogicalOr) {
                 lexer->eat();
 
-                result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::LogicalOr, result, parseLogicalAnd());
-                result->moduleName = lexer->getModuleName();
-                result->line = line;
-                result->lexpos = lexpos;
+                if (!matchLogicalAnd().second) {
+                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().location.moduleName, lexer->peek().location.line, lexer->peek().location.lexpos, "invalid secondary operand");
+                }
 
-                line = lexer->peek().line;
-                lexpos = lexer->peek().lexpos;
+                result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::LogicalOr, result, parseLogicalAnd());
+                result->location = location;
+
+                location = lexer->peek().location;
             }
 
             return result;
@@ -260,18 +261,19 @@ namespace fosl {
         std::shared_ptr<ASTNode> Parser::parseLogicalAnd() {
             std::shared_ptr<ASTNode> result = parseDirectComparison();
 
-            std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
+            core::SourceLocation location = lexer->peek().location;
 
-            while (lexer->peek().type == TokenType::LogicalAnd && std::get<1>(matchDirectComparison(1))) {
+            while (lexer->peek().type == TokenType::LogicalAnd) {
                 lexer->eat();
 
-                result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::LogicalAnd, result, parseDirectComparison());
-                result->moduleName = lexer->getModuleName();
-                result->line = line;
-                result->lexpos = lexpos;
+                if (!matchDirectComparison().second) {
+                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().location.moduleName, lexer->peek().location.line, lexer->peek().location.lexpos, "invalid secondary operand");
+                }
 
-                line = lexer->peek().line;
-                lexpos = lexer->peek().lexpos;
+                result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::LogicalAnd, result, parseDirectComparison());
+                result->location = location;
+
+                location = lexer->peek().location;
             }
 
             return result;
@@ -280,7 +282,7 @@ namespace fosl {
         std::shared_ptr<ASTNode> Parser::parseDirectComparison() {
             std::shared_ptr<ASTNode> result = parseComparison();
 
-            std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
+            core::SourceLocation location = lexer->peek().location;
 
             while (lexer->peek().type == TokenType::LogicalEqual || lexer->peek().type == TokenType::LogicalNotEqual) {
                 ASTBinaryOperator::Type ty;
@@ -288,17 +290,14 @@ namespace fosl {
                 else if (lexer->peek().type == TokenType::LogicalNotEqual) ty = ASTBinaryOperator::Type::LogicalNotEqual;
                 lexer->eat();
 
-                if (!std::get<1>(matchComparison())) {
-                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().moduleName, lexer->peek().line, lexer->peek().lexpos, "invalid second operand.");
+                if (!matchComparison().second) {
+                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().location.moduleName, lexer->peek().location.line, lexer->peek().location.lexpos, "invalid secondary operand.");
                 }
 
                 result = std::make_shared<ASTBinaryOperator>(ty, result, parseComparison());
-                result->moduleName = lexer->getModuleName();
-                result->line = line;
-                result->lexpos = lexpos;
+                result->location = location;
 
-                line = lexer->peek().line;
-                lexpos = lexer->peek().lexpos;
+                location = lexer->peek().location;
             }
 
             return result;
@@ -307,7 +306,7 @@ namespace fosl {
         std::shared_ptr<ASTNode> Parser::parseComparison() {
             std::shared_ptr<ASTNode> result = parseBitOr();
 
-            std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
+            core::SourceLocation location = lexer->peek().location;
 
             while (lexer->peek().type == TokenType::LogicalLessThan || lexer->peek().type == TokenType::LogicalLessThanEqual || lexer->peek().type == TokenType::LogicalGreaterThan || lexer->peek().type == TokenType::LogicalGreaterThanEqual) {
                 ASTBinaryOperator::Type ty;
@@ -317,17 +316,14 @@ namespace fosl {
                 else if (lexer->peek().type == TokenType::LogicalGreaterThanEqual) ty = ASTBinaryOperator::Type::LogicalGreaterThanEqual;
                 lexer->eat();
 
-                if (!std::get<1>(matchBitOr())) {
-                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().moduleName, lexer->peek().line, lexer->peek().lexpos, "invalid second operand.");
+                if (!matchBitOr().second) {
+                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().location.moduleName, lexer->peek().location.line, lexer->peek().location.lexpos, "invalid secondary operand.");
                 }
 
                 result = std::make_shared<ASTBinaryOperator>(ty, result, parseBitOr());
-                result->moduleName = lexer->getModuleName();
-                result->line = line;
-                result->lexpos = lexpos;
+                result->location = location;
 
-                line = lexer->peek().line;
-                lexpos = lexer->peek().lexpos;
+                location = lexer->peek().location;
             }
 
             return result;
@@ -336,22 +332,19 @@ namespace fosl {
         std::shared_ptr<ASTNode> Parser::parseBitOr() {
             std::shared_ptr<ASTNode> result = parseBitXor();
 
-            std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
+            core::SourceLocation location = lexer->peek().location;
 
             while (lexer->peek().type == TokenType::BitOr) {
                 lexer->eat();
 
-                if (!std::get<1>(matchBitXor())) {
-                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().moduleName, lexer->peek().line, lexer->peek().lexpos, "invalid second operand.");
+                if (!matchBitXor().second) {
+                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().location.moduleName, lexer->peek().location.line, lexer->peek().location.lexpos, "invalid secondary operand.");
                 }
 
                 result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::BitOr, result, parseBitXor());
-                result->moduleName = lexer->getModuleName();
-                result->line = line;
-                result->lexpos = lexpos;
+                result->location = location;
 
-                line = lexer->peek().line;
-                lexpos = lexer->peek().lexpos;
+                location = lexer->peek().location;
             }
 
             return result;
@@ -360,22 +353,19 @@ namespace fosl {
         std::shared_ptr<ASTNode> Parser::parseBitXor() {
             std::shared_ptr<ASTNode> result = parseBitAnd();
 
-            std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
+            core::SourceLocation location = lexer->peek().location;
 
             while (lexer->peek().type == TokenType::BitXor) {
                 lexer->eat();
 
-                if (!std::get<1>(matchBitAnd())) {
-                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().moduleName, lexer->peek().line, lexer->peek().lexpos, "invalid second operand.");
+                if (!matchBitAnd().second) {
+                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().location.moduleName, lexer->peek().location.line, lexer->peek().location.lexpos, "invalid secondary operand.");
                 }
 
                 result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::BitXor, result, parseBitAnd());
-                result->moduleName = lexer->getModuleName();
-                result->line = line;
-                result->lexpos = lexpos;
+                result->location = location;
 
-                line = lexer->peek().line;
-                lexpos = lexer->peek().lexpos;
+                location = lexer->peek().location;
             }
 
             return result;
@@ -384,22 +374,19 @@ namespace fosl {
         std::shared_ptr<ASTNode> Parser::parseBitAnd() {
             std::shared_ptr<ASTNode> result = parseBitShift();
 
-            std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
+            core::SourceLocation location = lexer->peek().location;
 
             while (lexer->peek().type == TokenType::BitAnd) {
                 lexer->eat();
 
-                if (!std::get<1>(matchBitShift())) {
-                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().moduleName, lexer->peek().line, lexer->peek().lexpos, "invalid second operand.");
+                if (!matchBitShift().second) {
+                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().location.moduleName, lexer->peek().location.line, lexer->peek().location.lexpos, "invalid secondary operand.");
                 }
 
                 result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::BitAnd, result, parseBitShift());
-                result->moduleName = lexer->getModuleName();
-                result->line = line;
-                result->lexpos = lexpos;
+                result->location = location;
 
-                line = lexer->peek().line;
-                lexpos = lexer->peek().lexpos;
+                location = lexer->peek().location;
             }
 
             return result;
@@ -408,7 +395,7 @@ namespace fosl {
         std::shared_ptr<ASTNode> Parser::parseBitShift() {
             std::shared_ptr<ASTNode> result = parseTerm();
 
-            std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
+            core::SourceLocation location = lexer->peek().location;
 
             while ((lexer->peek().type == TokenType::BitShiftLeft || lexer->peek().type == TokenType::BitShiftRight)) {
                 ASTBinaryOperator::Type ty;
@@ -416,17 +403,14 @@ namespace fosl {
                 else if (lexer->peek().type == TokenType::BitShiftRight) ty = ASTBinaryOperator::Type::BitShiftRight;
                 lexer->eat();
 
-                if (!std::get<1>(matchTerm())) {
-                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().moduleName, lexer->peek().line, lexer->peek().lexpos, "invalid second operand.");
+                if (!matchTerm().second) {
+                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().location.moduleName, lexer->peek().location.line, lexer->peek().location.lexpos, "invalid secondary operand.");
                 }
 
                 result = std::make_shared<ASTBinaryOperator>(ty, result, parseTerm());
-                result->moduleName = lexer->getModuleName();
-                result->line = line;
-                result->lexpos = lexpos;
+                result->location = location;
 
-                line = lexer->peek().line;
-                lexpos = lexer->peek().lexpos;
+                location = lexer->peek().location;
             }
 
             return result;
@@ -435,7 +419,7 @@ namespace fosl {
         std::shared_ptr<ASTNode> Parser::parseTerm() {
             std::shared_ptr<ASTNode> result = parseFactor();
 
-            std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
+            core::SourceLocation location = lexer->peek().location;
 
             while (lexer->peek().type == TokenType::Add || lexer->peek().type == TokenType::Subtract) {
                 ASTBinaryOperator::Type ty;
@@ -443,17 +427,14 @@ namespace fosl {
                 else if (lexer->peek().type == TokenType::Add) ty = ASTBinaryOperator::Type::Subtract;
                 lexer->eat();
 
-                if (!std::get<1>(matchFactor())) {
-                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().moduleName, lexer->peek().line, lexer->peek().lexpos, "invalid second operand.");
+                if (!matchFactor().second) {
+                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().location.moduleName, lexer->peek().location.line, lexer->peek().location.lexpos, "invalid secondary operand.");
                 }
 
                 result = std::make_shared<ASTBinaryOperator>(ty, result, parseFactor());
-                result->moduleName = lexer->getModuleName();
-                result->line = line;
-                result->lexpos = lexpos;
+                result->location = location;
 
-                line = lexer->peek().line;
-                lexpos = lexer->peek().lexpos;
+                location = lexer->peek().location;
             }
 
             return result;
@@ -462,7 +443,7 @@ namespace fosl {
         std::shared_ptr<ASTNode> Parser::parseFactor() {
             std::shared_ptr<ASTNode> result = parseUnary();
 
-            std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
+            core::SourceLocation location = lexer->peek().location;
 
             while (lexer->peek().type == TokenType::Modulo || lexer->peek().type == TokenType::Multiply || lexer->peek().type == TokenType::Divide) {
                 ASTBinaryOperator::Type ty;
@@ -471,24 +452,21 @@ namespace fosl {
                 else if (lexer->peek().type == TokenType::Divide) ty = ASTBinaryOperator::Type::Divide;
                 lexer->eat();
 
-                if (!std::get<1>(matchUnary())) {
-                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().moduleName, lexer->peek().line, lexer->peek().lexpos, "invalid second operand.");
+                if (!matchUnary().second) {
+                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().location.moduleName, lexer->peek().location.line, lexer->peek().location.lexpos, "invalid secondary operand.");
                 }
 
                 result = std::make_shared<ASTBinaryOperator>(ty, result, parseUnary());
-                result->moduleName = lexer->getModuleName();
-                result->line = line;
-                result->lexpos = lexpos;
+                result->location = location;
 
-                line = lexer->peek().line;
-                lexpos = lexer->peek().lexpos;
+                location = lexer->peek().location;
             }
 
             return result;
         }
 
         std::shared_ptr<ASTNode> Parser::parseUnary() {
-            std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
+            core::SourceLocation location = lexer->peek().location;
 
             if (lexer->peek().type == TokenType::LogicalNot || lexer->peek().type == TokenType::BitNot || lexer->peek().type == TokenType::Add || lexer->peek().type == TokenType::Subtract || lexer->peek().type == TokenType::Multiply || lexer->peek().type == TokenType::BitXor) {
                 ASTUnaryOperator::Type ty;
@@ -502,23 +480,20 @@ namespace fosl {
 
                 std::shared_ptr<ASTNode> second;
 
-                if (std::get<1>(matchParen())) {
+                if (matchParen().second) {
                     second = parseParen();
-                } else if (std::get<1>(matchUnary())) {
+                } else if (matchUnary().second) {
                     second = parseUnary();
                 } else {
-                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().moduleName, lexer->peek().line, lexer->peek().lexpos, "invalid unary operand.");
+                    throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().location.moduleName, lexer->peek().location.line, lexer->peek().location.lexpos, "invalid primary operand.");
                 }
 
                 auto result = std::make_shared<ASTUnaryOperator>(ty, second);
-                result->moduleName = lexer->getModuleName();
-                result->line = line;
-                result->lexpos = lexpos;
+                result->location = location;
 
-                line = lexer->peek().line;
-                lexpos = lexer->peek().lexpos;
+                location = lexer->peek().location;
                 return result;
-            } else if (std::get<1>(matchCallSubscriptOrMember())) {
+            } else if (matchCallSubscriptOrMember().second) {
                 return parseCallSubscriptOrMember();
             } else {
                 return nullptr;
@@ -530,7 +505,7 @@ namespace fosl {
 
             while (lexer->peek().type == TokenType::LeftParen || lexer->peek().type == TokenType::LeftBracket || lexer->peek().type == TokenType::Dot) {
                 if (lexer->peek().type == TokenType::LeftParen) {
-                    std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
+                    core::SourceLocation location = lexer->peek().location;
                     lexer->eat();
 
                     std::vector<std::shared_ptr<ASTNode>> callArgs;
@@ -539,7 +514,7 @@ namespace fosl {
                         callArgs.push_back(parseExpr());
 
                         if (lexer->peek().type != TokenType::Comma && lexer->peek().type != TokenType::RightParen) {
-                            throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->getModuleName(), line, lexpos, "expected ')' to terminate call.");
+                            throw Error(Error::Type::Syntactical, Error::Priority::Error, location.moduleName, location.line, location.lexpos, "expected ')' to terminate call.");
                         }
 
                         if (lexer->peek().type == TokenType::Comma) lexer->eat();
@@ -548,42 +523,34 @@ namespace fosl {
                     lexer->eat();
 
                     result = std::make_shared<ASTCall>(result, callArgs);
-                    result->moduleName = lexer->getModuleName();
-                    result->line = line;
-                    result->lexpos = lexpos;
+                    result->location = location;
                 } else if (lexer->peek().type == TokenType::LeftBracket) {
-                    std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
+                    core::SourceLocation location = lexer->peek().location;
 
                     lexer->eat();
 
                     result = std::make_shared<ASTSubscript>(result, parseExpr());
-                    result->moduleName = lexer->getModuleName();
-                    result->line = line;
-                    result->lexpos = lexpos;
+                    result->location = location;
 
                     if (lexer->peek().type != TokenType::RightBracket) {
-                        throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->getModuleName(), line, lexpos, "expected ']' to terminate subscript.");
+                        throw Error(Error::Type::Syntactical, Error::Priority::Error, location.moduleName, location.line, location.lexpos, "expected ']' to terminate subscript.");
                     }
 
                     lexer->eat();
                 } else if (lexer->peek().type == TokenType::Dot) {
-                    std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
+                    core::SourceLocation location = lexer->peek().location;
                     lexer->eat();
 
                     if (lexer->peek().type != TokenType::Name) {
-                        throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->getModuleName(), line, lexpos, "expected name after '.'.");
+                        throw Error(Error::Type::Syntactical, Error::Priority::Error, location.moduleName, location.line, location.lexpos, "expected name after '.'.");
                     }
 
                     auto n = std::make_shared<ASTLiteral>(lexer->peek().text, ASTLiteral::Type::Name);
-                    n->moduleName = lexer->getModuleName();
-                    n->line = lexer->peek().line;
-                    n->lexpos = lexer->peek().lexpos;
+                    n->location = lexer->peek().location;
                     lexer->eat();
 
                     result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::MemberResolution, result, n);
-                    result->moduleName = lexer->getModuleName();
-                    result->line = line;
-                    result->lexpos = lexpos;
+                    result->location = location;
                 }
             }
 
@@ -591,48 +558,38 @@ namespace fosl {
         }
 
         std::shared_ptr<ASTNode> Parser::parseOne() {
-            std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
+            core::SourceLocation location = lexer->peek().location;
 
-            if (std::get<1>(matchParen())) {
+            if (matchParen().second) {
                 return parseParen();
             } else if (lexer->peek().type == TokenType::Integer) {
                 auto result = std::make_shared<ASTLiteral>(*(std::uint64_t*)&lexer->peek().litrl);
-                result->moduleName = lexer->getModuleName();
-                result->line = line;
-                result->lexpos = lexpos;
+                result->location = location;
 
                 lexer->eat();
                 return result;
             } else if (lexer->peek().type == TokenType::Decimal) {
                 auto result = std::make_shared<ASTLiteral>(*(double*)&lexer->peek().litrl);
-                result->moduleName = lexer->getModuleName();
-                result->line = line;
-                result->lexpos = lexpos;
+                result->location = location;
 
                 lexer->eat();
                 return result;
             } else if (lexer->peek().type == TokenType::String) {
                 auto result = std::make_shared<ASTLiteral>(lexer->peek().text);
-                result->moduleName = lexer->getModuleName();
-                result->line = line;
-                result->lexpos = lexpos;
+                result->location = location;
 
                 lexer->eat();
                 return result;
             } else if (lexer->peek().type == TokenType::Character) {
-                if (lexer->peek().text.size() > 1) throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().moduleName, lexer->peek().line, lexer->peek().lexpos, "invalid character literal.");
+                if (lexer->peek().text.size() > 1) throw Error(Error::Type::Syntactical, Error::Priority::Error, lexer->peek().location.moduleName, lexer->peek().location.line, lexer->peek().location.lexpos, "invalid character literal.");
                 auto result = std::make_shared<ASTLiteral>(lexer->peek().text.data()[0]);
-                result->moduleName = lexer->getModuleName();
-                result->line = line;
-                result->lexpos = lexpos;
+                result->location = location;
 
                 lexer->eat();
                 return result;
             } else if (lexer->peek().type == TokenType::KwTrue || lexer->peek().type == TokenType::KwFalse) {
                 auto result = std::make_shared<ASTLiteral>(lexer->peek().type == TokenType::KwTrue);
-                result->moduleName = lexer->getModuleName();
-                result->line = line;
-                result->lexpos = lexpos;
+                result->location = location;
 
                 lexer->eat();
                 return result;
@@ -645,15 +602,12 @@ namespace fosl {
 
         std::shared_ptr<ASTNode> Parser::parseName() {
             if (lexer->peek().type == TokenType::Name) {
-                std::uint32_t line = lexer->peek().line, lexpos = lexer->peek().lexpos;
+                core::SourceLocation location = lexer->peek().location;
 
                 std::shared_ptr<ASTNode> result = std::make_shared<ASTLiteral>(lexer->peek().text, ASTLiteral::Type::Name);
-                result->moduleName = lexer->getModuleName();
-                result->line = line;
-                result->lexpos = lexpos;
+                result->location = location;
 
-                line = lexer->peek().line;
-                lexpos = lexer->peek().lexpos;
+                location = lexer->peek().location;
 
                 lexer->eat();
 
@@ -662,12 +616,9 @@ namespace fosl {
                     lexer->eat(2);
 
                     result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::NamespaceResolution, result, second);
-                    result->moduleName = lexer->getModuleName();
-                    result->line = line;
-                    result->lexpos = lexpos;
+                    result->location = location;
 
-                    line = lexer->peek().line;
-                    lexpos = lexer->peek().lexpos;
+                    location = lexer->peek().location;
                 }
 
                 return result;
@@ -684,8 +635,8 @@ namespace fosl {
             ++p;
 
             c = matchExpr(beg + p);
-            if (!std::get<1>(c)) return MatchType(p, false);
-            p += std::get<0>(c);
+            if (!c.second) return MatchType(p, false);
+            p += c.first;
 
             if (lexer->peek(beg + p).type != TokenType::RightParen) return MatchType(p, false);
             ++p;
@@ -702,15 +653,15 @@ namespace fosl {
             MatchType c;
 
             c = matchLogicalOr(beg + p);
-            if (!std::get<1>(c)) return MatchType(p, false);
-            p += std::get<0>(c);
+            if (!c.second) return MatchType(p, false);
+            p += c.first;
 
             if (lexer->peek(beg + p).type == TokenType::Equal || lexer->peek(beg + p).type == TokenType::AddEqual || lexer->peek(beg + p).type == TokenType::SubtractEqual || lexer->peek(beg + p).type == TokenType::ModuloEqual || lexer->peek(beg + p).type == TokenType::MultiplyEqual || lexer->peek(beg + p).type == TokenType::DivideEqual || lexer->peek(beg + p).type == TokenType::BitAndEqual || lexer->peek(beg + p).type == TokenType::BitXorEqual || lexer->peek(beg + p).type == TokenType::BitOrEqual || lexer->peek(beg + p).type == TokenType::BitShiftLeftEqual || lexer->peek(beg + p).type == TokenType::BitShiftRightEqual) {
                 ++p;
 
                 c = matchAssignment(beg + p);
-                if (!std::get<1>(c)) return MatchType(p, false);
-                p += std::get<0>(c);
+                if (!c.second) return MatchType(p, false);
+                p += c.first;
             }
 
             return MatchType(p, true);
@@ -721,15 +672,15 @@ namespace fosl {
             MatchType c;
 
             c = matchLogicalAnd(beg + p);
-            if (!std::get<1>(c)) return MatchType(p, false);
-            p += std::get<0>(c);
+            if (!c.second) return MatchType(p, false);
+            p += c.first;
 
             while (lexer->peek(beg + p).type == TokenType::LogicalOr) {
                 ++p;
 
                 c = matchLogicalAnd(beg + p);
-                if (!std::get<1>(c)) return MatchType(p, false);
-                p += std::get<0>(c);
+                if (!c.second) return MatchType(p, false);
+                p += c.first;
             }
 
             return MatchType(p, true);
@@ -740,15 +691,15 @@ namespace fosl {
             MatchType c;
 
             c = matchDirectComparison(beg + p);
-            if (!std::get<1>(c)) return MatchType(p, false);
-            p += std::get<0>(c);
+            if (!c.second) return MatchType(p, false);
+            p += c.first;
 
             while (lexer->peek(beg + p).type == TokenType::LogicalAnd) {
                 ++p;
 
                 c = matchDirectComparison(beg + p);
-                if (!std::get<1>(c)) return MatchType(p, false);
-                p += std::get<0>(c);
+                if (!c.second) return MatchType(p, false);
+                p += c.first;
             }
 
             return MatchType(p, true);
@@ -759,15 +710,15 @@ namespace fosl {
             MatchType c;
 
             c = matchComparison(beg + p);
-            if (!std::get<1>(c)) return MatchType(p, false);
-            p += std::get<0>(c);
+            if (!c.second) return MatchType(p, false);
+            p += c.first;
 
             while (lexer->peek(beg + p).type == TokenType::LogicalEqual || lexer->peek(beg + p).type == TokenType::LogicalNotEqual) {
                 ++p;
 
                 c = matchComparison(beg + p);
-                if (!std::get<1>(c)) return MatchType(p, false);
-                p += std::get<0>(c);
+                if (!c.second) return MatchType(p, false);
+                p += c.first;
             }
 
             return MatchType(p, true);
@@ -778,15 +729,15 @@ namespace fosl {
             MatchType c;
 
             c = matchBitOr(beg + p);
-            if (!std::get<1>(c)) return MatchType(p, false);
-            p += std::get<0>(c);
+            if (!c.second) return MatchType(p, false);
+            p += c.first;
 
             while (lexer->peek(beg + p).type == TokenType::LogicalLessThan || lexer->peek(beg + p).type == TokenType::LogicalLessThanEqual || lexer->peek(beg + p).type == TokenType::LogicalGreaterThan || lexer->peek(beg + p).type == TokenType::LogicalGreaterThanEqual) {
                 ++p;
 
                 c = matchBitOr(beg + p);
-                if (!std::get<1>(c)) return MatchType(p, false);
-                p += std::get<0>(c);
+                if (!c.second) return MatchType(p, false);
+                p += c.first;
             }
 
             return MatchType(p, true);
@@ -797,15 +748,15 @@ namespace fosl {
             MatchType c;
 
             c = matchBitXor(beg + p);
-            if (!std::get<1>(c)) return MatchType(p, false);
-            p += std::get<0>(c);
+            if (!c.second) return MatchType(p, false);
+            p += c.first;
 
             while (lexer->peek(beg + p).type == TokenType::BitOr) {
                 ++p;
 
                 c = matchBitXor(beg + p);
-                if (!std::get<1>(c)) return MatchType(p, false);
-                p += std::get<0>(c);
+                if (!c.second) return MatchType(p, false);
+                p += c.first;
             }
 
             return MatchType(p, true);
@@ -816,15 +767,15 @@ namespace fosl {
             MatchType c;
 
             c = matchBitAnd(beg + p);
-            if (!std::get<1>(c)) return MatchType(p, false);
-            p += std::get<0>(c);
+            if (!c.second) return MatchType(p, false);
+            p += c.first;
 
             while (lexer->peek(beg + p).type == TokenType::BitXor) {
                 ++p;
 
                 c = matchBitAnd(beg + p);
-                if (!std::get<1>(c)) return MatchType(p, false);
-                p += std::get<0>(c);
+                if (!c.second) return MatchType(p, false);
+                p += c.first;
             }
 
             return MatchType(p, true);
@@ -835,15 +786,15 @@ namespace fosl {
             MatchType c;
 
             c = matchBitShift(beg + p);
-            if (!std::get<1>(c)) return MatchType(p, false);
-            p += std::get<0>(c);
+            if (!c.second) return MatchType(p, false);
+            p += c.first;
 
             while (lexer->peek(beg + p).type == TokenType::BitAnd) {
                 ++p;
 
                 c = matchBitShift(beg + p);
-                if (!std::get<1>(c)) return MatchType(p, false);
-                p += std::get<0>(c);
+                if (!c.second) return MatchType(p, false);
+                p += c.first;
             }
 
             return MatchType(p, true);
@@ -854,15 +805,15 @@ namespace fosl {
             MatchType c;
 
             c = matchTerm(beg + p);
-            if (!std::get<1>(c)) return MatchType(p, false);
-            p += std::get<0>(c);
+            if (!c.second) return MatchType(p, false);
+            p += c.first;
 
             while (lexer->peek(beg + p).type == TokenType::BitShiftLeft || lexer->peek(beg + p).type == TokenType::BitShiftRight) {
                 ++p;
 
                 c = matchTerm(beg + p);
-                if (!std::get<1>(c)) return MatchType(p, false);
-                p += std::get<0>(c);
+                if (!c.second) return MatchType(p, false);
+                p += c.first;
             }
 
             return MatchType(p, true);
@@ -873,15 +824,15 @@ namespace fosl {
             MatchType c;
 
             c = matchFactor(beg + p);
-            if (!std::get<1>(c)) return MatchType(p, false);
-            p += std::get<0>(c);
+            if (!c.second) return MatchType(p, false);
+            p += c.first;
 
             while (lexer->peek(beg + p).type == TokenType::Add || lexer->peek(beg + p).type == TokenType::Subtract) {
                 ++p;
 
                 c = matchFactor(beg + p);
-                if (!std::get<1>(c)) return MatchType(p, false);
-                p += std::get<0>(c);
+                if (!c.second) return MatchType(p, false);
+                p += c.first;
             }
 
             return MatchType(p, true);
@@ -892,15 +843,15 @@ namespace fosl {
             MatchType c;
 
             c = matchUnary(beg + p);
-            if (!std::get<1>(c)) return MatchType(p, false);
-            p += std::get<0>(c);
+            if (!c.second) return MatchType(p, false);
+            p += c.first;
 
             while (lexer->peek(beg + p).type == TokenType::Modulo || lexer->peek(beg + p).type == TokenType::Multiply || lexer->peek(beg + p).type == TokenType::Divide) {
                 ++p;
 
                 c = matchUnary(beg + p);
-                if (!std::get<1>(c)) return MatchType(p, false);
-                p += std::get<0>(c);
+                if (!c.second) return MatchType(p, false);
+                p += c.first;
             }
 
             return MatchType(p, true);
@@ -914,12 +865,12 @@ namespace fosl {
                 ++p;
 
                 c = matchUnary(beg + p);
-                if (!std::get<1>(c) && !std::get<1>(c = matchParen())) return MatchType(p, false);
-                p += std::get<0>(c);
+                if (!c.second && !std::get<1>(c = matchParen())) return MatchType(p, false);
+                p += c.first;
             } else {
                 c = matchCallSubscriptOrMember(beg + p);
-                if (!std::get<1>(c)) return MatchType(p, false);
-                p += std::get<0>(c);
+                if (!c.second) return MatchType(p, false);
+                p += c.first;
             }
 
             return MatchType(p, true);
@@ -930,8 +881,8 @@ namespace fosl {
             MatchType c;
 
             c = matchOne(beg + p);
-            if (!std::get<1>(c)) return MatchType(p, false);
-            p += std::get<0>(c);
+            if (!c.second) return MatchType(p, false);
+            p += c.first;
 
             while (lexer->peek(beg + p).type == TokenType::LeftParen || lexer->peek(beg + p).type == TokenType::LeftBracket || (lexer->peek(beg + p).type == TokenType::Dot && lexer->peek(beg + p + 1).type == TokenType::Name)) {
                 ++p;
@@ -941,8 +892,8 @@ namespace fosl {
 
                     while (lexer->peek(beg + p).type != TokenType::RightParen) {
                         c = matchExpr(beg + p);
-                        if (!std::get<1>(c)) return MatchType(p, false);
-                        p += std::get<0>(c);
+                        if (!c.second) return MatchType(p, false);
+                        p += c.first;
 
                         if (lexer->peek(beg + p).type != TokenType::Comma && lexer->peek(beg + p).type != TokenType::RightParen) return MatchType(0, false);
 
@@ -956,11 +907,11 @@ namespace fosl {
                     ++p;
 
                     c = matchExpr(beg + p);
-                    if (!std::get<1>(c)) return MatchType(p, false);
-                    p += std::get<0>(c);
+                    if (!c.second) return MatchType(p, false);
+                    p += c.first;
 
                     if (lexer->peek(beg + 0).type != TokenType::RightBracket) {
-                        if (!std::get<1>(c)) return MatchType(p, false);
+                        if (!c.second) return MatchType(p, false);
                     }
 
                     ++p;
@@ -977,7 +928,7 @@ namespace fosl {
             MatchType c;
 
             if (std::get<1>((c = matchParen(beg + p)))) {
-                p += std::get<0>(c);
+                p += c.first;
                 return MatchType(p, true);
             } else if (lexer->peek(beg + p).type == TokenType::Integer) {
                 return MatchType(++p, true);

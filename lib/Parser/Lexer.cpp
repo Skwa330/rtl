@@ -1,7 +1,7 @@
 #include "fosl/parser/Lexer.h"
 #include <fmt/format.h>
 
-#include "fosl/Error.h"
+#include "fosl/Core/Error.h"
 
 #include <cctype>
 
@@ -70,9 +70,10 @@ namespace fosl {
             skip();
 
             Token token;
-            token.moduleName = moduleName;
-            token.line = line;
-            token.lexpos = lexpos;
+            token.location.moduleName = moduleName;
+            token.location.pointer = pointer;
+            token.location.line = line;
+            token.location.lexpos = lexpos;
             token.length = 0;
             token.text = std::string_view(token.text.data(), 0);
             std::size_t start = pointer;
@@ -129,11 +130,21 @@ namespace fosl {
 
                         token.type = TokenType::Dot;
                         break;
-                        case ',':
+                    }
+
+                    case ',': {
                         next();
                         token.type = TokenType::Comma;
                         break;
-                        case ':':
+                    }
+
+                    case ';': {
+                        next();
+                        token.type = TokenType::SemiColon;
+                        break;
+                    }
+
+                    case ':': {
                         next();
                         if (pointer < source.size() && source[pointer] == ':') {
                             next();
@@ -652,13 +663,13 @@ namespace fosl {
             }
 
             token.length = pointer - start;
-            if (!token.text.size()) token.text = std::string_view(token.text.data(), token.length);
             if (!token.text.data())
                 token.text = std::string_view(&source[start], token.text.size());
+            if (!token.text.size()) token.text = std::string_view(token.text.data(), token.length);
             tokens.push_back(token);
         }
 
-        void Lexer::initFromSource(const std::string &moduleName, const std::string_view &source) {
+        void Lexer::initFromSource(const std::string_view &moduleName, const std::string_view &source) {
             this->moduleName = moduleName;
             this->source = source;
         }
@@ -706,7 +717,7 @@ namespace fosl {
             this->step = step;
         }
 
-        void Lexer::setModuleName(const std::string &moduleName) {
+        void Lexer::setModuleName(const std::string_view &moduleName) {
             this->moduleName = moduleName;
         }
 

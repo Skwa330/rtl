@@ -1,13 +1,15 @@
 #ifndef FOSL_PARSER_LEXER_H
 #define FOSL_PARSER_LEXER_H
 
-#include <utility> // for std::pair
-#include <type_traits> // for std::aligned_union
+#include <utility>
+#include <type_traits>
 #include <string>
 #include <vector>
 
 #include <cstddef>
 #include <cstdint>
+
+#include "fosl/Core/SourceLocation.h"
 
 namespace fosl {
     namespace parser {
@@ -31,6 +33,8 @@ namespace fosl {
 
             Arrow,
             BigArrow,
+
+            SemiColon,
 
             Colon,
             ColonColon,
@@ -138,19 +142,18 @@ namespace fosl {
 
         struct Token {
             TokenType type;
-            std::string_view moduleName;
-            std::uint32_t line, lexpos;
+            core::SourceLocation location;
             std::size_t length;
 
             std::string_view text;
 
-            std::aligned_union<0, std::uint64_t, double>::type litrl;
+            std::aligned_union < 0, std::uint64_t, double > ::type litrl;
         };
 
         class Lexer {
         private:
-            std::uint32_t line = 1, lexpos = 1;
             std::size_t pointer = 0;
+            std::uint32_t line = 1, lexpos = 1;
 
             std::size_t step = 0;
 
@@ -159,17 +162,18 @@ namespace fosl {
 
             char textBuffer[8192];
 
-            std::vector<Token> tokens;
+            std::vector < Token > tokens;
 
             void next();
             void skip();
 
             void once();
         public:
-            void initFromSource(const std::string &moduleName, const std::string_view &source);
-            void initFromFile(const std::string &filepath);
+            void initFromSource(const std::string_view & moduleName, const std::string_view & source);
+            void initFromFile(const std::string & filepath);
+            // We are using a std::string ^^ here because the filepath has to be null-terminated
 
-            const Token &peek(std::size_t count = 0);
+            const Token & peek(std::size_t count = 0);
             void eat(std::size_t count = 1);
 
             void setLine(std::uint32_t line);
@@ -179,8 +183,8 @@ namespace fosl {
 
             void setStep(std::size_t step);
 
-            void setModuleName(const std::string &moduleName);
-            void setSource(const std::string_view &source);
+            void setModuleName(const std::string_view & moduleName);
+            void setSource(const std::string_view & source);
 
             std::uint32_t getLine() const;
             std::uint32_t getLexpos() const;
@@ -189,10 +193,10 @@ namespace fosl {
 
             std::size_t getStep() const;
 
-            const std::string &getModuleName() const;
-            const std::string &getSource() const;
+            const std::string & getModuleName() const;
+            const std::string & getSource() const;
         };
     }
 }
 
-#endif /* _KNW_PARSE_LEXER_H_ */
+#endif /* FOSL_PARSER_LEXER_H */

@@ -17,4 +17,4 @@ namespace fosl {
     }
 }
 
-#endif /* _KNW_TIMING_H_ */
+#endif /* FOSL_TIMING_H */

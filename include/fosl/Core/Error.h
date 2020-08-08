@@ -46,4 +46,4 @@ namespace fosl {
     };
 }
 
-#endif /* _KNW_ERROR_H_  */
+#endif /* FOSL-ERROR_H  */

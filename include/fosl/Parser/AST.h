@@ -10,6 +10,8 @@
 
 #include <cstdint>
 
+#include "fosl/Core/SourceLocation.h"
+
 namespace fosl {
     namespace parser {
         class TypeDeclaration {
@@ -72,8 +74,7 @@ namespace fosl {
 
         class ASTNode {
         public:
-            std::string_view moduleName;
-            std::uint32_t line, lexpos;
+            core::SourceLocation location;
 
             virtual ASTType getType() const = 0;
         };
@@ -296,4 +297,4 @@ namespace fosl {
     }
 }
 
-#endif /* _KNW_PARSER_AST_H_ */
+#endif /* FOSL_PARSER_AST_H */

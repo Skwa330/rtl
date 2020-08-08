@@ -1,4 +1,4 @@
-#include "fosl/Error.h"
+#include "fosl/Core/Error.h"
 
 namespace fosl {
     Error::Error(Type type, Priority priority, const std::string_view &moduleName, std::uint32_t line, std::uint32_t lexpos, const std::string_view &message) {

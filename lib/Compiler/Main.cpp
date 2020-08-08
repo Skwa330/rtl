@@ -1,5 +1,5 @@
 #include <fmt/format.h>
-#include <ghc/filesystem.hpp>
+#include <filesystem>
 #include <ya_getopt.h>
 
 #ifdef _WIN32
@@ -20,15 +20,9 @@
 
 #include "fosl/parser/Lexer.h"
 #include "fosl/parser/Parser.h"
-#include "fosl/Error.h"
-#include "fosl/Timing.h"
+#include "fosl/Core/Error.h"
 
 #include "Dump.h"
-
-void *operator new(std::size_t size) {
-    fmt::print(stderr, "\033[33;1mallocation\033[0m\n");
-    return malloc(size);
-}
 
 void displayUsage(const std::string &programName) {
     fmt::print(stderr, "usage: {} [options...] inputFiles\n\n", programName);
@@ -44,20 +38,22 @@ void displayUsage(const std::string &programName) {
     fmt::print(stderr, "{}", info);
 }
 
-std::size_t getNthSubstr(std::size_t n, const std::string_view &s,
-               const std::string_view &p,
-               bool repeats = false) {
-   std::size_t i = s.find(p);
-   std::size_t adv = (repeats) ? 1 : p.length();
+std::size_t getNthSubstr(std::size_t n, const std::string_view &str, const std::string_view &substr) {
+    std::size_t c = 0;
 
-   std::size_t j;
-   for (j = 1; j < n && i != -1; ++j)
-      i = s.find(p, i+adv);
+    std::size_t pos = 0, last = 0;
 
-   if (j == n)
-     return(i);
-   else
-     return(-1);
+    while (c < n && pos != -1) {
+        pos = str.find(substr);
+
+        if (pos != -1) {
+            last = pos + 1;
+        }
+
+        ++c;
+    }
+
+    return last;
 }
 
 void colorizeTerminal() {
@@ -70,6 +66,107 @@ void colorizeTerminal() {
     }
 
     #endif
+}
+
+void formatError(const fosl::Error &e, const std::string_view &source) {
+    const char *color = "";
+
+    switch (e.getPriority()) {
+        case fosl::Error::Priority::Info: {
+            color = "\033[34;1m";
+            break;
+        }
+
+        case fosl::Error::Priority::Warning: {
+            color = "\033[35;1m";
+            break;
+        }
+
+        case fosl::Error::Priority::Error:
+        case fosl::Error::Priority::Fatal: {
+            color = "\033[31;1m";
+            break;
+        }
+    }
+
+    const char *type = "";
+
+    if (e.getPriority() == fosl::Error::Priority::Error) {
+        switch (e.getType()) {
+            case fosl::Error::Type::Lexical: {
+                type = "lex ";
+                break;
+            }
+
+            case fosl::Error::Type::Syntactical: {
+                type = "syntax ";
+                break;
+            }
+
+            case fosl::Error::Type::Semantic: {
+                type = "semantic ";
+                break;
+            }
+
+            case fosl::Error::Type::Intermediate: {
+                type = "interm ";
+                break;
+            }
+        }
+    }
+
+    const char *priority = "";
+
+    switch (e.getPriority()) {
+        case fosl::Error::Priority::Info: {
+            priority = "info";
+            break;
+        }
+
+        case fosl::Error::Priority::Warning: {
+            priority = "warning";
+            break;
+        }
+
+        case fosl::Error::Priority::Error: {
+            priority = "error";
+            break;
+        }
+
+        case fosl::Error::Priority::Fatal: {
+            priority = "fatal error";
+            break;
+        }
+    }
+
+    fmt::print(stderr, "{}:{}:{}: {}{}{}: \033[0m{}\n\n", e.getModuleName(), e.getLine(), e.getLexpos(), color, type, priority, e.getMessage());
+    std::size_t errorLineIndex = getNthSubstr(e.getLine() - 1,  source, "\n");
+    if (errorLineIndex == -1) {
+        fmt::print(stderr, "\t\t\033[35;1m(failed to acquire source)\033[0m");
+    } else {
+        std::size_t length = 0;
+
+        while (errorLineIndex + length < source.size() && source[errorLineIndex + length] != '\n') {
+            ++length;
+        }
+
+        fmt::print(stderr, "\t\t{:.{}}\n\t\t\033[32;1m", &source[errorLineIndex], length);
+
+        std::size_t i = 1;
+
+        for (; i < e.getLexpos(); i++) {
+            std::fputc(' ', stderr);
+        }
+
+        std::fputc('^', stderr);
+        ++i;
+
+        while (i++ < length) {
+            std::fputc(' ', stderr);
+        }
+
+        fmt::print(stderr, "\033[0m");
+    }
 }
 
 int main(int argc, char **argv) {
@@ -144,12 +241,12 @@ int main(int argc, char **argv) {
         inputFiles.emplace_back(argv[i]);
     }
 
-    if (!ghc::filesystem::exists(inputFiles[0])) {
+    if (!std::filesystem::exists(inputFiles[0])) {
         fmt::print(stderr, "{}: \033[31;1merror: \033[0mno such file or directory: `{}'.\n", programName, inputFiles[0]);
         return -1;
     }
 
-    if (!ghc::filesystem::is_regular_file(inputFiles[0])) {
+    if (!std::filesystem::is_regular_file(inputFiles[0])) {
         fmt::print(stderr, "{}: \033[31;1merror: \033[0m`{}' is not a source file.\n", programName, inputFiles[0]);
         return -1;
     }
@@ -158,111 +255,27 @@ int main(int argc, char **argv) {
     auto parser = std::make_shared<fosl::parser::Parser>(nodes);
     parser->initFromFile(inputFiles[0]);
 
+    parser->getLexer()->setModuleName("Lolz");
+
     try {
         std::shared_ptr<fosl::parser::ASTNode> expr = parser->parseExpr();
         fosl::compiler::dumpNode(expr);
         std::putchar('\n');
-    } catch (fosl::Error &e) {
-        const char *color = "";
+    } catch (const fosl::Error &e) {
+        formatError(e, parser->getLexer()->getSource());
+    } catch (const std::exception &e) {
+        fmt::print(stderr, "{}\n", e.what());
+    }
 
-        switch (e.getPriority()) {
-            case fosl::Error::Priority::Info: {
-                color = "\033[34;1m";
-                break;
-            }
+    parser->getLexer()->setModuleName("Lolz2");
 
-            case fosl::Error::Priority::Warning: {
-                color = "\033[35;1m";
-                break;
-            }
-
-            case fosl::Error::Priority::Error:
-            case fosl::Error::Priority::Fatal: {
-                color = "\033[31;1m";
-                break;
-            }
-        }
-
-        const char *type = "";
-
-        if (e.getPriority() == fosl::Error::Priority::Error) {
-            switch (e.getType()) {
-                case fosl::Error::Type::Lexical: {
-                    type = "lex ";
-                    break;
-                }
-
-                case fosl::Error::Type::Syntactical: {
-                    type = "syntax ";
-                    break;
-                }
-
-                case fosl::Error::Type::Semantic: {
-                    type = "semantic ";
-                    break;
-                }
-
-                case fosl::Error::Type::Intermediate: {
-                    type = "interm ";
-                    break;
-                }
-            }
-        }
-
-        const char *priority = "";
-
-        switch (e.getPriority()) {
-            case fosl::Error::Priority::Info: {
-                priority = "info";
-                break;
-            }
-
-            case fosl::Error::Priority::Warning: {
-                priority = "warning";
-                break;
-            }
-
-            case fosl::Error::Priority::Error: {
-                priority = "error";
-                break;
-            }
-
-            case fosl::Error::Priority::Fatal: {
-                priority = "fatal error";
-                break;
-            }
-        }
-
-        fmt::print(stderr, "{}:{}:{}: {}{}{}: \033[0m{}\n\n", e.getModuleName(), e.getLine(), e.getLexpos(), color, type, priority, e.getMessage());
-        std::size_t errorLineIndex = getNthSubstr(e.getLine() - 1,  parser->getLexer()->getSource(), "\n");
-        if (errorLineIndex == -1) {
-            fmt::print(stderr, "\033[35;1m(failed to acquire source)\033[0m");
-        } else {
-            ++errorLineIndex;
-            std::size_t length = 0;
-
-            while (errorLineIndex + length < parser->getLexer()->getSource().size() && parser->getLexer()->getSource()[errorLineIndex + length] != '\n') {
-                ++length;
-            }
-
-            fmt::print(stderr, "\t\t{:.{}}\n\t\t\033[32;1m", &parser->getLexer()->getSource()[errorLineIndex], length);
-
-            std::size_t i = 0;
-
-            for (; i < e.getLexpos() - 1; i++) {
-                std::fputc(' ', stderr);
-            }
-
-            std::fputc('^', stderr);
-            ++i;
-
-            while (i++ < length) {
-                std::fputc(' ', stderr);
-            }
-
-            fmt::print(stderr, "\033[0m");
-        }
-    } catch (std::exception &e) {
+    try {
+        std::shared_ptr<fosl::parser::ASTNode> expr = parser->parseExpr();
+        fosl::compiler::dumpNode(expr);
+        std::putchar('\n');
+    } catch (const fosl::Error &e) {
+        formatError(e, parser->getLexer()->getSource());
+    } catch (const std::exception &e) {
         fmt::print(stderr, "{}\n", e.what());
     }
 

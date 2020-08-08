@@ -45,6 +45,8 @@ namespace fosl {
         }
 
         void dumpNode(const std::shared_ptr<fosl::parser::ASTNode>& node) {
+            if (!node) return;
+
             std::putchar('(');
 
             if (node->getType() == fosl::parser::ASTType::Call) {

@@ -8,7 +8,7 @@
 
 namespace fosl {
     namespace parser {
-        using MatchType = std::tuple<std::size_t, bool>;
+        using MatchType = std::pair<std::size_t, bool>;
 
         struct Types {
             std::shared_ptr<TypeDeclaration> booleanType;
@@ -109,4 +109,4 @@ namespace fosl {
     }
 }
 
-#endif /* _KNW_PARSER_PARSER_H_ */
+#endif /* FOSL_PARSER_PARSER_H */
