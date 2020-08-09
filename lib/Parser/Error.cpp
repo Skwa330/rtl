@@ -1,6 +1,6 @@
-#include "lang/Parser/Error.h"
+#include "rlt/Parser/Error.h"
 
-namespace lang {
+namespace rlt {
     namespace parser {
         Error::Error(Type type, const SourceLocation &sourceLocation, const std::string_view &message) {
             this->type = type;
@@ -21,7 +21,7 @@ namespace lang {
             return message;
         }
 
-        const char *Error::what() const {
+        const char *Error::what() const noexcept {
             return message.c_str();
         }
     }

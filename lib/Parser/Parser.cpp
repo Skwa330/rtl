@@ -1,8 +1,8 @@
-#include "lang/Parser/Parser.h"
-#include "lang/Parser/Error.h"
+#include "rlt/Parser/Parser.h"
+#include "rlt/Parser/Error.h"
 #include <fmt/format.h>
 
-namespace lang {
+namespace rlt {
     namespace parser {
         Parser::Parser(std::vector<std::shared_ptr<ASTNode>>& nodes) : nodes(nodes) {
             lexer = std::make_unique<Lexer>();
@@ -41,11 +41,11 @@ namespace lang {
 
         }
 
-        std::shared_ptr<ASTNode> Parser::parse() {
-            return nullptr;
+        std::shared_ptr<ASTNode> Parser::parseTopLevel() {
+            return {};
         }
 
-        MatchType Parser::match(std::size_t beg) {
+        MatchType Parser::matchTopLevel(std::size_t beg) {
             return MatchType(0, false);
         }
 
@@ -170,21 +170,21 @@ namespace lang {
 
         // }
 
-        // std::shared_ptr<ASTFunctionHeader> Parser::parseFunction() {
+        std::shared_ptr<ASTFunctionHeader> Parser::parseFunction() {
+            return {};
+        }
 
-        // }
-
-        // MatchType Parser::matchFunction(std::size_t beg) {
-
-        // }
+        MatchType Parser::matchFunction(std::size_t beg) {
+            return MatchType(false, 0);
+        }
 
         std::shared_ptr<ASTNode> Parser::parseParen() {
-            if (lexer->peek().type != TokenType::LeftParen) return nullptr;
+            if (lexer->peek().type != TokenType::LeftParen) return {};
             lexer->eat();
 
             auto result = parseExpr();
 
-            if (lexer->peek().type != TokenType::RightParen) return nullptr;
+            if (lexer->peek().type != TokenType::RightParen) return {};
             lexer->eat();
 
             return result;
@@ -496,7 +496,7 @@ namespace lang {
             } else if (matchCallSubscriptOrMember().second) {
                 return parseCallSubscriptOrMember();
             } else {
-                return nullptr;
+                return {};
             }
         }
 
@@ -597,7 +597,7 @@ namespace lang {
                 return parseName();
             }
 
-            return nullptr;
+            return {};
         }
 
         std::shared_ptr<ASTNode> Parser::parseName() {
@@ -623,7 +623,7 @@ namespace lang {
 
                 return result;
             } else {
-                return nullptr;
+                return {};
             }
         }
 
@@ -865,7 +865,7 @@ namespace lang {
                 ++p;
 
                 c = matchUnary(beg + p);
-                if (!c.second && !std::get<1>(c = matchParen())) return MatchType(p, false);
+                if (!c.second && (c = matchParen()).second) return MatchType(p, false);
                 p += c.first;
             } else {
                 c = matchCallSubscriptOrMember(beg + p);
@@ -927,7 +927,7 @@ namespace lang {
             std::size_t p = 0;
             MatchType c;
 
-            if (std::get<1>((c = matchParen(beg + p)))) {
+            if ((c = matchParen(beg + p)).second) {
                 p += c.first;
                 return MatchType(p, true);
             } else if (lexer->peek(beg + p).type == TokenType::Integer) {

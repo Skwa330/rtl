@@ -1,6 +1,6 @@
-#include "lang/Core/Timing.h"
+#include "rlt/Core/Timing.h"
 
-namespace lang {
+namespace rlt {
     namespace core {
         template<typename F, typename... ArgTypes>
         float calcTime(const F &f, ArgTypes... args) {

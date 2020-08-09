@@ -1,6 +1,6 @@
 include_guard()
 
-project(langCore)
+project(rltCore)
 
 set(SOURCES ${CMAKE_CURRENT_LIST_DIR}/Core/Timing.cpp)
 
@@ -10,5 +10,5 @@ endif()
 
 add_definitions(-DFMT_HEADER_ONLY)
 
-add_library(langCore ${SOURCES})
-target_include_directories(langCore PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../include ${CMAKE_CURRENT_LIST_DIR}/../deps/fmt/include)
+add_library(rltCore ${SOURCES})
+target_include_directories(rltCore PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../include ${CMAKE_CURRENT_LIST_DIR}/../deps/fmt/include)

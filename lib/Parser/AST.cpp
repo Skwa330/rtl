@@ -1,6 +1,6 @@
-#include "lang/parser/AST.h"
+#include "rlt/parser/AST.h"
 
-namespace lang {
+namespace rlt {
     namespace parser {
         TypeDeclaration::TypeDeclaration(Tag tag) {
             this->tag = tag;
@@ -157,33 +157,30 @@ namespace lang {
 
         ASTLiteral::ASTLiteral(std::uint64_t value) {
             literalType = Type::Integer;
-            *(std::uint64_t*)&this->value = value;
+            this->value = value;
         }
 
         ASTLiteral::ASTLiteral(double value) {
             literalType = Type::Decimal;
-            *(double*)&this->value = value;
+            this->value = value;
         }
 
         ASTLiteral::ASTLiteral(const std::string_view &value, Type ty) {
             literalType = ty;
-            new (&this->value) std::string(value.data(), value.size());
+            this->value = std::string(value.data(), value.size());
         }
 
         ASTLiteral::ASTLiteral(char value) {
             literalType = Type::Character;
-            *(char*)&this->value = value;
+            this->value = value;
         }
 
         ASTLiteral::ASTLiteral(bool value) {
             literalType = Type::Bool;
-            *(bool*)&this->value = value;
+            this->value = value;
         }
 
         ASTLiteral::~ASTLiteral() {
-            if (literalType == Type::String || literalType == Type::Name) {
-                (*(std::string*)&value).~basic_string();
-            }
         }
 
         ASTLiteral::Type ASTLiteral::getLiteralType() const {
@@ -191,23 +188,23 @@ namespace lang {
         }
 
         std::uint64_t ASTLiteral::getInteger() const {
-            return *(std::uint64_t*)&value;
+            return std::get<std::uint64_t>(value);
         }
 
         double ASTLiteral::getDecimal() const {
-            return *(double*)&value;
+            return std::get<double>(value);
         }
 
         const std::string &ASTLiteral::getString() const {
-            return *(std::string*)&value;
+            return std::get<std::string>(value);
         }
 
         char ASTLiteral::getCharacter() const {
-            return *(char*)&value;
+            return std::get<char>(value);
         }
 
         bool ASTLiteral::getBool() const {
-            return *(bool*)&value;
+            return std::get<bool>(value);
         }
 
         ASTType ASTLiteral::getType() const {

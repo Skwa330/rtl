@@ -18,9 +18,9 @@
 #include <type_traits>
 #include <array>
 
-#include "lang/Parser/Lexer.h"
-#include "lang/Parser/Parser.h"
-#include "lang/Parser/Error.h"
+#include "rlt/Parser/Lexer.h"
+#include "rlt/Parser/Parser.h"
+#include "rlt/Parser/Error.h"
 
 #include "Dump.h"
 
@@ -68,12 +68,12 @@ void colorizeTerminal() {
     #endif
 }
 
-void formatError(const lang::parser::Error &e, const std::string_view &source) {
+void formatError(const rlt::parser::Error &e, const std::string_view &source) {
     const char *type;
 
-    if (e.getType() == lang::parser::Error::Type::Lexical) {
+    if (e.getType() == rlt::parser::Error::Type::Lexical) {
         type = "lex";
-    } else if (e.getType() == lang::parser::Error::Type::Syntactical) {
+    } else if (e.getType() == rlt::parser::Error::Type::Syntactical) {
         type = "syntax";
     }
 
@@ -88,22 +88,25 @@ void formatError(const lang::parser::Error &e, const std::string_view &source) {
             ++length;
         }
 
-        fmt::print(stderr, "\t\t{:.{}}\n\t\t\033[32;1m", &source[errorLineIndex], length);
+        std::size_t where;
+
+        if (e.getSourceLocation().pointer < source.size()) {
+            fmt::print(stderr, "\t\t{:.{}}\n\t\t\033[32;1m", &source[errorLineIndex], length);
+            where = e.getSourceLocation().lexpos;
+        } else {
+            fmt::print(stderr, "\t\t{:.{}}<end-of-input>\n\t\t\033[32;1m", &source[errorLineIndex], length);
+            where = length + 2;
+        }
 
         std::size_t i = 1;
 
-        for (; i < e.getSourceLocation().lexpos; i++) {
+        for (; i < where; i++) {
             std::fputc(' ', stderr);
         }
 
         std::fputc('^', stderr);
-        ++i;
 
-        while (i++ < length) {
-            std::fputc(' ', stderr);
-        }
-
-        fmt::print(stderr, "\033[0m");
+        fmt::print(stderr, "\033[0m\n");
     }
 }
 
@@ -189,17 +192,17 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    std::vector<std::shared_ptr<lang::parser::ASTNode>> nodes;
-    auto parser = std::make_shared<lang::parser::Parser>(nodes);
+    std::vector<std::shared_ptr<rlt::parser::ASTNode>> nodes;
+    auto parser = std::make_shared<rlt::parser::Parser>(nodes);
     parser->initFromFile(inputFiles[0]);
 
     parser->getLexer()->sourceLocation.moduleName = "Lolz";
 
     try {
-        std::shared_ptr<lang::parser::ASTNode> expr = parser->parseExpr();
-        lang::compiler::dumpNode(expr);
+        std::shared_ptr<rlt::parser::ASTNode> expr = parser->parseExpr();
+        rlt::compiler::dumpNode(expr);
         std::putchar('\n');
-    } catch (const lang::parser::Error &e) {
+    } catch (const rlt::parser::Error &e) {
         formatError(e, parser->getLexer()->source);
     } catch (const std::exception &e) {
         fmt::print(stderr, "{}\n", e.what());
@@ -208,10 +211,10 @@ int main(int argc, char **argv) {
     parser->getLexer()->sourceLocation.moduleName = "Lolz2";
 
     try {
-        std::shared_ptr<lang::parser::ASTNode> expr = parser->parseExpr();
-        lang::compiler::dumpNode(expr);
+        std::shared_ptr<rlt::parser::ASTNode> expr = parser->parseExpr();
+        rlt::compiler::dumpNode(expr);
         std::putchar('\n');
-    } catch (const lang::parser::Error &e) {
+    } catch (const rlt::parser::Error &e) {
         formatError(e, parser->getLexer()->source);
     } catch (const std::exception &e) {
         fmt::print(stderr, "{}\n", e.what());

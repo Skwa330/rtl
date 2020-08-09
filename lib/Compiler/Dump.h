@@ -1,12 +1,12 @@
-#ifndef LANG_COMPILER_DUMP_H
-#define LANG_COMPILER_DUMP_H
+#ifndef RLT_COMPILER_DUMP_H
+#define RLT_COMPILER_DUMP_H
 
-#include "lang/Parser/AST.h"
+#include "rlt/Parser/AST.h"
 
-namespace lang {
+namespace rlt {
     namespace compiler {
-        void dumpNode(const std::shared_ptr<lang::parser::ASTNode>& node);
+        void dumpNode(const std::shared_ptr<rlt::parser::ASTNode>& node);
     }
 }
 
-#endif /* LANG_COMPILER_DUMP_H */
+#endif /* RLT_COMPILER_DUMP_H */

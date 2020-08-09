@@ -1,11 +1,11 @@
-#include "lang/Parser/Lexer.h"
+#include "rlt/Parser/Lexer.h"
 #include <fmt/format.h>
 
-#include "lang/Parser/Error.h"
+#include "rlt/Parser/Error.h"
 
 #include <cctype>
 
-namespace lang {
+namespace rlt {
     namespace parser {
         void Lexer::next() {
             if (source[sourceLocation.pointer++] == '\n') {
@@ -398,7 +398,7 @@ namespace lang {
                                     case 'u': {
                                         next();
                                         if (sourceLocation.pointer + 1 >= source.size()) {
-                                            throw Error(Error::Type::Lexical, sourceLocation, "\\u must be followed by exactly two hex digits.");
+                                            throw Error(Error::Type::Lexical, sourceLocation, "\\u must be followed by exactly four hex digits.");
                                         }
 
                                         std::uint16_t hex = 0;
@@ -416,14 +416,15 @@ namespace lang {
                                             next();
                                         }
 
-                                        textBuffer[length++] = *(char*)&hex;
+                                        *(std::uint16_t *)textBuffer = hex;
+                                        length += 2;
                                         break;
                                     }
 
                                     case 'U': {
                                         next();
                                         if (sourceLocation.pointer + 1 >= source.size()) {
-                                            throw Error(Error::Type::Lexical, sourceLocation, "\\U must be followed by exactly two hex digits.");
+                                            throw Error(Error::Type::Lexical, sourceLocation, "\\U must be followed by exactly eight hex digits.");
                                         }
 
                                         std::uint32_t hex = 0;
@@ -441,7 +442,8 @@ namespace lang {
                                             next();
                                         }
 
-                                        textBuffer[length++] = *(char*)&hex;
+                                        *(std::uint32_t *)textBuffer = hex;
+                                        length += 4;
                                         break;
                                     }
 
@@ -481,13 +483,16 @@ namespace lang {
                             next();
                         }
 
+                        std::size_t length = sourceLocation.pointer - begin;
+
                         auto is = [&](const char *s) {
-                            return std::memcmp(textBuffer, s, token.text.size() * sizeof(char)) == 0;
+                            return std::memcmp(textBuffer, s, length * sizeof(char)) == 0;
                         };
 
-                        switch (token.text.size()) {
+                        switch (length) {
                             case 2: {
-                                if (is("if")) token.type = TokenType::KwIf;
+                                if (is("as")) token.type = TokenType::KwAs;
+                                else if (is("if")) token.type = TokenType::KwIf;
                                 else if (is("for")) token.type = TokenType::KwFor;
                                 else goto name;
 
@@ -579,22 +584,19 @@ namespace lang {
                         token.type = TokenType::Name;
                         break;
                     } else if (std::isdigit(source[sourceLocation.pointer])) {
-                        std::uint64_t &integer = *(std::uint64_t*)(&token.litrl);
-                        double &decimal = *(double*)(&token.litrl);
-
-                        integer = 0;
+                        token.litrl = (std::uint64_t)0;
 
                         if (sourceLocation.pointer + 2 < source.size() && source[sourceLocation.pointer] == '0' && std::tolower(source[sourceLocation.pointer + 1]) == 'x' && std::isxdigit(source[sourceLocation.pointer + 2])) {
                             next();
                             next();
 
                             while (sourceLocation.pointer < source.size() && std::isxdigit(source[sourceLocation.pointer])) {
-                                integer *= 16;
+                                token.litrl = std::get<std::uint64_t>(token.litrl) * (std::uint64_t)16;
 
                                 if (std::isalpha(source[sourceLocation.pointer])) {
-                                    integer += 10 + (std::tolower(source[sourceLocation.pointer]) - 'a');
+                                    token.litrl = std::get<std::uint64_t>(token.litrl) + (std::uint64_t)10 + (std::tolower(source[sourceLocation.pointer]) - 'a');
                                 } else if (std::isdigit(source[sourceLocation.pointer])) {
-                                    integer += source[sourceLocation.pointer] - '0';
+                                    token.litrl = std::get<std::uint64_t>(token.litrl) + source[sourceLocation.pointer] - '0';
                                 }
 
                                 next();
@@ -606,8 +608,8 @@ namespace lang {
                             next();
 
                             while (sourceLocation.pointer < source.size() && (source[sourceLocation.pointer] >= '0' && source[sourceLocation.pointer] <= '7')) {
-                                integer *= 8;
-                                integer += source[sourceLocation.pointer] - '0';
+                                token.litrl = std::get<std::uint64_t>(token.litrl) * 8;
+                                token.litrl = std::get<std::uint64_t>(token.litrl) + source[sourceLocation.pointer] - '0';
 
                                 next();
                             }
@@ -618,8 +620,8 @@ namespace lang {
                             next();
 
                             while (sourceLocation.pointer < source.size() && (source[sourceLocation.pointer] == '0' || source[sourceLocation.pointer] == '1')) {
-                                integer *= 2;
-                                integer += source[sourceLocation.pointer] - '0';
+                                token.litrl = std::get<std::uint64_t>(token.litrl) * 2;
+                                token.litrl = std::get<std::uint64_t>(token.litrl) + source[sourceLocation.pointer] - '0';
 
                                 next();
                             }
@@ -627,8 +629,8 @@ namespace lang {
                             token.type = TokenType::Integer;
                         } else {
                             while (sourceLocation.pointer < source.size() && std::isdigit(source[sourceLocation.pointer])) {
-                                integer *= 10;
-                                integer += source[sourceLocation.pointer] - '0';
+                                token.litrl = std::get<std::uint64_t>(token.litrl) * 10;
+                                token.litrl = std::get<std::uint64_t>(token.litrl) + source[sourceLocation.pointer] - '0';
                                 next();
                             }
 
@@ -642,7 +644,7 @@ namespace lang {
                                     next();
                                 }
 
-                                decimal = (double)integer + fractional;
+                                token.litrl = (double)std::get<std::uint64_t>(token.litrl) + fractional;
                                 token.type = TokenType::Decimal;
                             } else {
                                 token.type = TokenType::Integer;
@@ -664,7 +666,7 @@ namespace lang {
             tokens.push_back(token);
         }
 
-        void Lexer::initFromSource(const std::string &moduleName, const std::string_view &source) {
+        void Lexer::initFromSource(const std::string &moduleName, const std::string &source) {
             this->source = source;
 
             sourceLocation.moduleName = moduleName;
@@ -678,8 +680,8 @@ namespace lang {
             std::size_t size = std::ftell(file);
             std::rewind(file);
 
-            char *buffer = new char[size];
-            std::memset(buffer, 0, size * sizeof(char));
+            char *buffer = new char[size + 1];
+            std::memset(buffer, 0, (size + 1) * sizeof(char));
             std::fread(buffer, 1, size, file);
 
             initFromSource(filepath, buffer);
