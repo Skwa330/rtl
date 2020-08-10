@@ -20,7 +20,8 @@
 
 #include "rlt/Parser/Lexer.h"
 #include "rlt/Parser/Parser.h"
-#include "rlt/Parser/Error.h"
+#include "rlt/Core/Error.h"
+#include "rlt/Core/Record.h"
 
 #include "Dump.h"
 
@@ -28,11 +29,11 @@ void displayUsage(const std::string &programName) {
     fmt::print(stderr, "usage: {} [options...] inputFiles\n\n", programName);
     const char *info =
         "Options:\n"
-        "    -h, --help               display this message and quit.\n"
-        "    -c, --compile            compile, but don't link.\n"
-        "    -o, --out    <filename>  set the output file name.\n"
-        "    -t, --triple <triple>    set the target triple.\n"
-        "    -l, --link   <linkable>  link an external library in the output executable.\n"
+        "    -h, --help                      display this message and quit.\n"
+        "    -c, --compile                   compile, but don't link.\n"
+        "    -o, --out    <filename>         set the output file name.\n"
+        "    -t, --triple-triple <triple>    set the target triple.\n"
+        "    -l, --link   <linkable>         link an external library in the output executable.\n"
     ;
 
     fmt::print(stderr, "{}", info);
@@ -44,7 +45,7 @@ std::size_t getNthSubstr(std::size_t n, const std::string_view &str, const std::
     std::size_t pos = 0, last = 0;
 
     while (c < n && pos != -1) {
-        pos = str.find(substr);
+        pos = str.find(substr, last);
 
         if (pos != -1) {
             last = pos + 1;
@@ -68,17 +69,22 @@ void colorizeTerminal() {
     #endif
 }
 
-void formatError(const rlt::parser::Error &e, const std::string_view &source) {
-    const char *type;
+void formatError(const rlt::core::Error &e, const std::string_view &source) {
+    const char *type = "";
 
-    if (e.getType() == rlt::parser::Error::Type::Lexical) {
-        type = "lex";
-    } else if (e.getType() == rlt::parser::Error::Type::Syntactical) {
-        type = "syntax";
+    if (e.getType() == rlt::core::Error::Type::Lexical) {
+        type = "lex ";
+    } else if (e.getType() == rlt::core::Error::Type::Syntactic) {
+        type = "syntax ";
+    } else if (e.getType() == rlt::core::Error::Type::Semantic) {
+        type = "semantic ";
     }
 
-    fmt::print(stderr, "{}: {} \033[31;1merror: \033[0m{}\n\n", e.getSourceLocation().getFormatted(), type, e.getMessage());
-    std::size_t errorLineIndex = getNthSubstr(e.getSourceLocation().line - 1,  source, "\n");
+    fmt::print(stderr, "begin: {}, end: {}\n", e.getBegin().pointer, e.getEnd().pointer);
+
+    std::uint32_t line = e.getEnd().line;
+    fmt::print(stderr, "{}:{}:{}-{}: \033[31;1m{}error: \033[0m{}\n\n", e.getBegin().moduleName, line, e.getBegin().lexpos, e.getEnd().lexpos, type, e.getMessage());
+    std::size_t errorLineIndex = getNthSubstr(line - 1,  source, "\n");
     if (errorLineIndex == -1) {
         fmt::print(stderr, "\t\t\033[35;1m(failed to acquire source)\033[0m");
     } else {
@@ -88,15 +94,9 @@ void formatError(const rlt::parser::Error &e, const std::string_view &source) {
             ++length;
         }
 
-        std::size_t where;
+        std::size_t where = e.getBegin().lexpos;
 
-        if (e.getSourceLocation().pointer < source.size()) {
-            fmt::print(stderr, "\t\t{:.{}}\n\t\t\033[32;1m", &source[errorLineIndex], length);
-            where = e.getSourceLocation().lexpos;
-        } else {
-            fmt::print(stderr, "\t\t{:.{}}<end-of-input>\n\t\t\033[32;1m", &source[errorLineIndex], length);
-            where = length + 2;
-        }
+        fmt::print(stderr, "\t\t{:.{}}\n\t\t\033[32;1m", &source[errorLineIndex], length);
 
         std::size_t i = 1;
 
@@ -105,6 +105,10 @@ void formatError(const rlt::parser::Error &e, const std::string_view &source) {
         }
 
         std::fputc('^', stderr);
+
+        while (++i < e.getEnd().lexpos) {
+            std::fputc('~', stderr);
+        }
 
         fmt::print(stderr, "\033[0m\n");
     }
@@ -129,7 +133,7 @@ int main(int argc, char **argv) {
         { "help", ya_no_argument, nullptr, 'h' },
         { "compile", ya_no_argument, nullptr, 'c' },
         { "out", ya_required_argument, nullptr, 'o' },
-        { "triple", ya_required_argument, nullptr, 't' },
+        { "target-triple", ya_required_argument, nullptr, 't' },
         { "link", ya_required_argument, nullptr, 'l' },
         { "emit-llvm", ya_no_argument, nullptr, 301 },
         { "emit-obj", ya_no_argument, nullptr, 302 },
@@ -180,41 +184,26 @@ int main(int argc, char **argv) {
 
     for (int i = 0; i < argc; i++) {
         inputFiles.emplace_back(argv[i]);
-    }
 
-    if (!std::filesystem::exists(inputFiles[0])) {
-        fmt::print(stderr, "{}: \033[31;1merror: \033[0mno such file or directory: `{}'.\n", programName, inputFiles[0]);
-        return -1;
-    }
+        if (!std::filesystem::exists(inputFiles[i])) {
+            fmt::print(stderr, "{}: \033[31;1merror: \033[0mno such file or directory: '{}'.\n", programName, inputFiles[i]);
+            return -1;
+        }
 
-    if (!std::filesystem::is_regular_file(inputFiles[0])) {
-        fmt::print(stderr, "{}: \033[31;1merror: \033[0m`{}' is not a source file.\n", programName, inputFiles[0]);
-        return -1;
+        if (!std::filesystem::is_regular_file(inputFiles[i])) {
+            fmt::print(stderr, "{}: \033[31;1merror: \033[0m'{}' is not a source file.\n", programName, inputFiles[i]);
+            return -1;
+        }
     }
 
     std::vector<std::shared_ptr<rlt::parser::ASTNode>> nodes;
     auto parser = std::make_shared<rlt::parser::Parser>(nodes);
     parser->initFromFile(inputFiles[0]);
 
-    parser->getLexer()->sourceLocation.moduleName = "Lolz";
-
     try {
-        std::shared_ptr<rlt::parser::ASTNode> expr = parser->parseExpr();
-        rlt::compiler::dumpNode(expr);
-        std::putchar('\n');
-    } catch (const rlt::parser::Error &e) {
-        formatError(e, parser->getLexer()->source);
-    } catch (const std::exception &e) {
-        fmt::print(stderr, "{}\n", e.what());
-    }
-
-    parser->getLexer()->sourceLocation.moduleName = "Lolz2";
-
-    try {
-        std::shared_ptr<rlt::parser::ASTNode> expr = parser->parseExpr();
-        rlt::compiler::dumpNode(expr);
-        std::putchar('\n');
-    } catch (const rlt::parser::Error &e) {
+        auto node = parser->parseFunction();
+        fmt::print("{}\n", rlt::compiler::dumpNode(node));
+    } catch (const rlt::core::Error &e) {
         formatError(e, parser->getLexer()->source);
     } catch (const std::exception &e) {
         fmt::print(stderr, "{}\n", e.what());

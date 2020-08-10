@@ -6,16 +6,14 @@
 #include <cstdint>
 
 namespace rlt {
-    namespace parser {
+    namespace core {
         struct SourceLocation {
-        public:
-            std::string moduleName;
+            std::string_view moduleName;
             std::size_t pointer;
             std::uint32_t line, lexpos;
 
             SourceLocation() = default;
-            SourceLocation(const SourceLocation &other) = default;
-            SourceLocation(const std::string &moduleName, std::size_t pointer, std::uint32_t line, std::uint32_t lexpos);
+            SourceLocation(const std::string_view &moduleName, std::size_t pointer, std::uint32_t line, std::uint32_t lexpos);
 
             std::string getFormatted() const;
         };

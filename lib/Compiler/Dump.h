@@ -5,7 +5,7 @@
 
 namespace rlt {
     namespace compiler {
-        void dumpNode(const std::shared_ptr<rlt::parser::ASTNode>& node);
+        std::string dumpNode(const std::shared_ptr<rlt::parser::ASTNode> &node, std::size_t ind = 0);
     }
 }
 

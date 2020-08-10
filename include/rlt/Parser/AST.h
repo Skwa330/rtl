@@ -10,27 +10,28 @@
 
 #include <cstdint>
 
-#include "SourceLocation.h"
+#include "rlt/Core/SourceLocation.h"
 
 namespace rlt {
     namespace parser {
+        // Move this to Sema eventually.
         class TypeDeclaration {
         public:
             enum class Tag {
-                DtBoolean,
+                DtBool,
 
-                DtInt8,
-                DtInt16,
-                DtInt32,
-                DtInt64,
+                DtI8,
+                DtI16,
+                DtI32,
+                DtI64,
 
-                DtUInt8,
-                DtUInt16,
-                DtUInt32,
-                DtUInt64,
+                DtU8,
+                DtU16,
+                DtU32,
+                DtU64,
 
-                DtFloat32,
-                DtFloat64,
+                DtF32,
+                DtF64,
 
                 TtStruct,
                 TtEnum,
@@ -38,27 +39,20 @@ namespace rlt {
             };
         private:
             Tag tag;
+            std::string name;
             // This should have a std::variant< ASTStructDescription, ASTEnumDescription, ASTUnionDescription> to store information about the declared type.
         public:
-            TypeDeclaration(Tag tag);
+            TypeDeclaration(Tag tag, const std::string &name);
 
             Tag getTag() const;
-        };
-
-        class Type {
-        private:
-            std::shared_ptr<TypeDeclaration> declaration;
-            std::size_t pointer;
-        public:
-            Type() = default;
-            Type(const std::shared_ptr<TypeDeclaration>& declaration, std::size_t pointer);
-
-            const std::shared_ptr<TypeDeclaration>& getDeclaration() const;
-            std::size_t getPointer() const;
+            const std::string &getName() const;
         };
 
         enum class ASTType {
+            BuiltinType,
             VariableDeclaration,
+            VariableDefinition,
+            Return,
             Block,
             FunctionHeader,
             FunctionBody,
@@ -68,24 +62,100 @@ namespace rlt {
             Call,
             Subscript,
             Literal,
+            Conversion,
             UnaryOperator,
             BinaryOperator
         };
 
         class ASTNode {
         public:
-            SourceLocation location;
+            core::SourceLocation begin, end;
+
+            virtual ~ASTNode() = default;
 
             virtual ASTType getType() const = 0;
         };
 
-        class ASTVariableDeclaration : public ASTNode {
-        private:
-            std::shared_ptr<ASTNode> target;
+        class ASTBuiltinType : public ASTNode {
         public:
-            ASTVariableDeclaration(const std::shared_ptr<ASTNode>& target);
+            enum class Type {
+                Auto,
+                None,
+                Bool,
+                I8,
+                I16,
+                I32,
+                I64,
+                U8,
+                U16,
+                U32,
+                U64,
+                F32,
+                F64
+            };
+        private:
+            Type builtinType;
+        public:
+            ASTBuiltinType(Type builtinType);
 
-            const std::shared_ptr<ASTNode> getTarget() const;
+            Type getBuiltinType() const;
+
+            ASTType getType() const;
+        };
+
+        class Type {
+        private:
+            std::shared_ptr<ASTNode> baseType;
+            std::size_t pointer;
+        public:
+            Type() = default;
+            Type(const std::shared_ptr<ASTNode>& baseType, std::size_t pointer);
+
+            const std::shared_ptr<ASTNode>& getBaseType() const;
+            std::size_t getPointer() const;
+        };
+
+        class ASTVariableDeclaration : public ASTNode {
+        public:
+            enum class Flags : std::uint32_t {
+                Constant = 0x1
+            };
+        private:
+            std::shared_ptr<ASTNode> name;
+            Type targetTy;
+            std::uint32_t flags = 0;
+        public:
+            ASTVariableDeclaration(const std::shared_ptr<ASTNode>& name, const Type &targetTy);
+
+            void setFlags(std::uint32_t flags);
+
+            const std::shared_ptr<ASTNode> getName() const;
+            const Type &getTargetTy() const;
+            std::uint32_t getFlags() const;
+
+            ASTType getType() const;
+        };
+
+        class ASTVariableDefinition : public ASTNode {
+        private:
+            std::shared_ptr<ASTVariableDeclaration> decl;
+            std::shared_ptr<ASTNode> expr;
+        public:
+            ASTVariableDefinition(const std::shared_ptr<ASTVariableDeclaration> &decl, const std::shared_ptr<ASTNode> &expr);
+
+            const std::shared_ptr<ASTVariableDeclaration> &getDecl() const;
+            const std::shared_ptr<ASTNode> &getExpr() const;
+
+            ASTType getType() const;
+        };
+
+        class ASTReturn : public ASTNode {
+        private:
+            std::shared_ptr<ASTNode> value;
+        public:
+            ASTReturn(const std::shared_ptr<ASTNode> &value);
+
+            const std::shared_ptr<ASTNode> &getValue() const;
 
             ASTType getType() const;
         };
@@ -95,7 +165,9 @@ namespace rlt {
             std::shared_ptr<ASTBlock> parent;
             std::vector<std::shared_ptr<ASTNode>> nodes;
         public:
-            ASTBlock(const std::shared_ptr<ASTBlock>& parent, const std::vector<std::shared_ptr<ASTNode>>& nodes);
+            ASTBlock(const std::vector<std::shared_ptr<ASTNode>>& nodes);
+
+            void setParent(const std::shared_ptr<ASTBlock> &parent);
 
             const std::shared_ptr<ASTBlock>& getParent() const;
             const std::vector<std::shared_ptr<ASTNode>> getNodes() const;
@@ -107,27 +179,30 @@ namespace rlt {
         class ASTFunctionHeader : public ASTNode {
         public:
             enum class Flags : std::uint32_t {
-                Public = 0x1,
-                Private = 0x2,
-                Foreign = 0x4,
+                Private = 0x1,
+                Foreign = 0x2,
+                Extern = 0x4,
+                CCall = 0x8,
+                FastCall = 0x10,
             };
         private:
-            std::shared_ptr<ASTNode> target;
+            std::shared_ptr<ASTNode> name;
             std::shared_ptr<ASTFunctionBody> body;
             std::vector<std::shared_ptr<ASTVariableDeclaration>> paramDecls;
             Type rt;
 
-            std::uint32_t flags;
+            std::uint32_t flags = 0;
         public:
             ASTFunctionHeader() = default;
-            ASTFunctionHeader(const std::shared_ptr<ASTNode>& target, const std::vector<std::shared_ptr<ASTVariableDeclaration>>& paramDecls, const Type &rt);
+            ASTFunctionHeader(const std::shared_ptr<ASTNode>& name, const std::vector<std::shared_ptr<ASTVariableDeclaration>>& paramDecls, const Type &rt);
 
             void setBody(const std::shared_ptr<ASTFunctionBody> body);
             void setFlags(std::uint32_t flags);
 
+            const std::shared_ptr<ASTNode> &getName() const;
             const std::shared_ptr<ASTFunctionBody>& getBody() const;
             const std::vector<std::shared_ptr<ASTVariableDeclaration>>& getParamDecls() const;
-            const std::shared_ptr<ASTNode>& getRT() const;
+            const Type& getRT() const;
             std::uint32_t getFlags() const;
 
             ASTType getType() const;
@@ -142,6 +217,9 @@ namespace rlt {
             ASTFunctionBody() = default;
             ASTFunctionBody(const std::shared_ptr<ASTBlock>& block);
 
+            void setHeader(const std::shared_ptr<ASTFunctionHeader> &header);
+
+            const std::shared_ptr<ASTFunctionHeader> &getHeader() const;
             const std::shared_ptr<ASTBlock>& getBlock() const;
 
             ASTType getType() const;
@@ -150,16 +228,16 @@ namespace rlt {
         class ASTIf : public ASTNode {
         private:
             std::shared_ptr<ASTNode> condition;
-            std::shared_ptr<ASTBlock> block;
-            std::shared_ptr<ASTIf> elif;
-            std::shared_ptr<ASTBlock> elseBlock;
+            std::shared_ptr<ASTNode> statement;
+            std::vector<std::pair<std::shared_ptr<ASTNode>, std::shared_ptr<ASTNode>>> elifs;
+            std::shared_ptr<ASTNode> elseStatement;
         public:
-            ASTIf(const std::shared_ptr<ASTNode>& condition, const std::shared_ptr<ASTBlock>& block, const std::shared_ptr<ASTIf>& elif, const std::shared_ptr<ASTBlock>& elseBlock);
+            ASTIf(const std::shared_ptr<ASTNode> &condition, const std::shared_ptr<ASTNode> &statement, const std::vector<std::pair<std::shared_ptr<ASTNode>, std::shared_ptr<ASTNode>>> &elifs, const std::shared_ptr<ASTNode> &elseStatement);
 
-            const std::shared_ptr<ASTNode>& getCondition() const;
-            const std::shared_ptr<ASTBlock>& getBlock() const;
-            const std::shared_ptr<ASTIf>& getElif() const;
-            const std::shared_ptr<ASTBlock> getElseBlock() const;
+            const std::shared_ptr<ASTNode> &getCondition() const;
+            const std::shared_ptr<ASTNode> &getStatement() const;
+            const std::vector<std::pair<std::shared_ptr<ASTNode>, std::shared_ptr<ASTNode>>> getElifs() const;
+            const std::shared_ptr<ASTNode> &getElseStatement() const;
 
             ASTType getType() const;
         };
@@ -219,6 +297,19 @@ namespace rlt {
             const std::string &getString() const;
             char getCharacter() const;
             bool getBool() const;
+
+            ASTType getType() const;
+        };
+
+        class ASTConversion : public ASTNode {
+        private:
+            std::shared_ptr<ASTNode> from;
+            Type to;
+        public:
+            ASTConversion(const std::shared_ptr<ASTNode> &from, const Type &to);
+
+            const std::shared_ptr<ASTNode> &getFrom() const;
+            const Type &getTo() const;
 
             ASTType getType() const;
         };

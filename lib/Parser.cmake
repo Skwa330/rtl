@@ -4,7 +4,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/Core.cmake)
 
 project(rltParser)
 
-set(SOURCES AST.cpp Error.cpp Lexer.cpp Parser.cpp SourceLocation.cpp)
+set(SOURCES AST.cpp Lexer.cpp Parser.cpp)
 
 list(TRANSFORM SOURCES PREPEND ${CMAKE_CURRENT_LIST_DIR}/Parser/)
 

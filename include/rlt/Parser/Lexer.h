@@ -9,8 +9,8 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "Error.h"
-#include "SourceLocation.h"
+#include "rlt/Core/Error.h"
+#include "rlt/Core/SourceLocation.h"
 
 namespace rlt {
     namespace parser {
@@ -31,6 +31,8 @@ namespace rlt {
             DotDot,
 
             Comma,
+
+            Dollar,
 
             Arrow,
             BigArrow,
@@ -99,28 +101,29 @@ namespace rlt {
 
             KwAny,
 
-            KwBoolean,
+            KwNone,
+
+            KwBool,
             KwTrue,
             KwFalse,
 
-            KwInt8,
-            KwInt16,
-            KwInt32,
-            KwInt64,
+            KwI8,
+            KwI16,
+            KwI32,
+            KwI64,
 
-            KwUInt8,
-            KwUInt16,
-            KwUInt32,
-            KwUInt64,
+            KwU8,
+            KwU16,
+            KwU32,
+            KwU64,
 
-            KwFloat32,
-            KwFloat64,
+            KwF32,
+            KwF64,
 
             KwAs,
 
             KwImport,
             KwNamespace,
-            KwPrivate,
 
             KwFun,
 
@@ -145,12 +148,11 @@ namespace rlt {
 
         struct Token {
             TokenType type;
-            SourceLocation location;
-            std::size_t length;
+            core::SourceLocation begin, end;
 
             std::string_view text;
 
-            std::variant < std::uint64_t, double > litrl;
+            std::variant < std::string, std::uint64_t, double > litrl; // we have to have std::string here because when we peek multiple tokens ahead the textBuffer gets messed up :()
         };
 
         class Lexer {
@@ -164,7 +166,7 @@ namespace rlt {
 
             void once();
         public:
-            SourceLocation sourceLocation;
+            core::SourceLocation sourceLocation;
             std::string source;
 
             void initFromSource(const std::string & moduleName, const std::string & source);

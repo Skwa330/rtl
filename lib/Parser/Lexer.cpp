@@ -1,8 +1,6 @@
 #include "rlt/Parser/Lexer.h"
 #include <fmt/format.h>
 
-#include "rlt/Parser/Error.h"
-
 #include <cctype>
 
 namespace rlt {
@@ -31,7 +29,7 @@ namespace rlt {
                 }
 
                 if (sourceLocation.pointer + 1 < source.size() && source[sourceLocation.pointer] == '/' && source[sourceLocation.pointer + 1] == '#') {
-                    SourceLocation location = sourceLocation;
+                    core::SourceLocation location = sourceLocation;
 
                     next();
                     next();
@@ -55,7 +53,7 @@ namespace rlt {
                     }
 
                     if (balance) {
-                        throw Error(Error::Type::Lexical, location, "unterminated comment.");
+                        throw core::Error(core::Error::Type::Lexical, location, sourceLocation,  "unterminated comment.");
                     }
 
                     continue;
@@ -69,13 +67,15 @@ namespace rlt {
             skip();
 
             Token token;
-            token.location = sourceLocation;
-            token.length = 0;
+            token.begin = sourceLocation;
             token.text = std::string_view(token.text.data(), 0);
             std::size_t start = sourceLocation.pointer;
 
             if (sourceLocation.pointer >= source.size() || !source[sourceLocation.pointer]) {
                 token.type = TokenType::Eoi;
+                const char *EOI = "$EOF";
+                std::strcpy(textBuffer, EOI);
+                token.text = std::string_view(textBuffer, std::strlen(EOI));
             } else {
                 switch (source[sourceLocation.pointer]) {
                     case '(': {
@@ -131,6 +131,12 @@ namespace rlt {
                     case ',': {
                         next();
                         token.type = TokenType::Comma;
+                        break;
+                    }
+
+                    case '$': {
+                        next();
+                        token.type = TokenType::Dollar;
                         break;
                     }
 
@@ -305,7 +311,9 @@ namespace rlt {
                         next();
                         token.type = TokenType::BitNot;
                         break;
-                        case '=':
+                    }
+
+                    case '=': {
                         next();
                         if (sourceLocation.pointer < source.size()) {
                             if (source[sourceLocation.pointer] == '>') {
@@ -337,7 +345,7 @@ namespace rlt {
                     case '"': {
                         char delim = source[sourceLocation.pointer];
 
-                        SourceLocation location = sourceLocation;
+                        core::SourceLocation location = sourceLocation;
 
                         next();
                         std::size_t length = 0;
@@ -371,9 +379,10 @@ namespace rlt {
                                     }
 
                                     case 'x': {
+                                        core::SourceLocation begin = sourceLocation;
                                         next();
                                         if (sourceLocation.pointer + 1 >= source.size()) {
-                                            throw Error(Error::Type::Lexical, sourceLocation, "\\x must be followed by exactly two hex digits.");
+                                            throw core::Error(core::Error::Type::Lexical, begin, sourceLocation, "\\x must be followed by exactly two hex digits.");
                                         }
 
                                         std::uint8_t hex = 0;
@@ -385,7 +394,7 @@ namespace rlt {
                                             } else if (source[sourceLocation.pointer] >= '0' && source[sourceLocation.pointer] <= '9') {
                                                 hex += source[sourceLocation.pointer] - '0';
                                             } else {
-                                                throw Error(Error::Type::Lexical, sourceLocation, fmt::format("invalid hex digit '{}'.", source[sourceLocation.pointer]));
+                                                throw core::Error(core::Error::Type::Lexical, begin, sourceLocation, fmt::format("invalid hex digit '{}'.", source[sourceLocation.pointer]));
                                             }
 
                                             next();
@@ -396,9 +405,10 @@ namespace rlt {
                                     }
 
                                     case 'u': {
+                                        core::SourceLocation begin = sourceLocation;
                                         next();
                                         if (sourceLocation.pointer + 1 >= source.size()) {
-                                            throw Error(Error::Type::Lexical, sourceLocation, "\\u must be followed by exactly four hex digits.");
+                                            throw core::Error(core::Error::Type::Lexical, begin, sourceLocation, "\\u must be followed by exactly four hex digits.");
                                         }
 
                                         std::uint16_t hex = 0;
@@ -410,7 +420,7 @@ namespace rlt {
                                             } else if (source[sourceLocation.pointer] >= '0' && source[sourceLocation.pointer] <= '9') {
                                                 hex += source[sourceLocation.pointer] - '0';
                                             } else {
-                                                throw Error(Error::Type::Lexical, sourceLocation, fmt::format("invalid hex digit '{}'.", source[sourceLocation.pointer]));
+                                                throw core::Error(core::Error::Type::Lexical, begin, sourceLocation, fmt::format("invalid hex digit '{}'.", source[sourceLocation.pointer]));
                                             }
 
                                             next();
@@ -422,9 +432,10 @@ namespace rlt {
                                     }
 
                                     case 'U': {
+                                        core::SourceLocation begin = sourceLocation;
                                         next();
                                         if (sourceLocation.pointer + 1 >= source.size()) {
-                                            throw Error(Error::Type::Lexical, sourceLocation, "\\U must be followed by exactly eight hex digits.");
+                                            throw core::Error(core::Error::Type::Lexical, begin, sourceLocation, "\\U must be followed by exactly eight hex digits.");
                                         }
 
                                         std::uint32_t hex = 0;
@@ -436,7 +447,7 @@ namespace rlt {
                                             } else if (source[sourceLocation.pointer] >= '0' && source[sourceLocation.pointer] <= '9') {
                                                 hex += source[sourceLocation.pointer] - '0';
                                             } else {
-                                                throw Error(Error::Type::Lexical, sourceLocation, fmt::format("invalid hex digit '{}'.", source[sourceLocation.pointer]));
+                                                throw core::Error(core::Error::Type::Lexical, begin, sourceLocation, fmt::format("invalid hex digit '{}'.", source[sourceLocation.pointer]));
                                             }
 
                                             next();
@@ -461,11 +472,11 @@ namespace rlt {
                         }
 
                         if (sourceLocation.pointer >= source.size() || source[sourceLocation.pointer] != delim) {
-                            throw Error(Error::Type::Lexical, sourceLocation, "unterminated literal.");
+                            throw core::Error(core::Error::Type::Lexical, location, sourceLocation, "unterminated literal.");
                         }
 
                         next();
-                        token.text = std::string_view(textBuffer, length);
+                        token.litrl = std::string(textBuffer, length);
                         if (delim == '"') {
                             token.type = TokenType::String;
                         } else if (delim == '\'') {
@@ -486,12 +497,14 @@ namespace rlt {
                         std::size_t length = sourceLocation.pointer - begin;
 
                         auto is = [&](const char *s) {
-                            return std::memcmp(textBuffer, s, length * sizeof(char)) == 0;
+                            return std::memcmp(&source[begin], s, length * sizeof(char)) == 0;
                         };
 
                         switch (length) {
                             case 2: {
-                                if (is("as")) token.type = TokenType::KwAs;
+                                if (is("i8")) token.type = TokenType::KwI8;
+                                else if (is("u8")) token.type = TokenType::KwI8;
+                                else if (is("as")) token.type = TokenType::KwAs;
                                 else if (is("if")) token.type = TokenType::KwIf;
                                 else if (is("for")) token.type = TokenType::KwFor;
                                 else goto name;
@@ -504,15 +517,23 @@ namespace rlt {
                                 else if (is("var")) token.type = TokenType::KwVar;
                                 else if (is("fun")) token.type = TokenType::KwFun;
                                 else if (is("any")) token.type = TokenType::KwAny;
-                                else if (is("int")) token.type = TokenType::KwInt64;
+                                else if (is("i16")) token.type = TokenType::KwI16;
+                                else if (is("i32")) token.type = TokenType::KwI32;
+                                else if (is("i64")) token.type = TokenType::KwI64;
+                                else if (is("u16")) token.type = TokenType::KwU16;
+                                else if (is("u32")) token.type = TokenType::KwU32;
+                                else if (is("u64")) token.type = TokenType::KwU64;
+                                else if (is("f32")) token.type = TokenType::KwF32;
+                                else if (is("f64")) token.type = TokenType::KwF64;
                                 else goto name;
 
                                 break;
                             }
 
                             case 4: {
-                                if (is("true")) token.type = TokenType::KwTrue;
-                                else if (is("int8")) token.type = TokenType::KwInt8;
+                                if (is("none")) token.type = TokenType::KwNone;
+                                else if (is("bool")) token.type = TokenType::KwBool;
+                                else if (is("true")) token.type = TokenType::KwTrue;
                                 else if (is("elif")) token.type = TokenType::KwElif;
                                 else if (is("else")) token.type = TokenType::KwElse;
                                 else if (is("enum")) token.type = TokenType::KwEnum;
@@ -523,11 +544,6 @@ namespace rlt {
 
                             case 5: {
                                 if (is("false")) token.type = TokenType::KwFalse;
-                                else if (is("int16")) token.type = TokenType::KwInt16;
-                                else if (is("int32")) token.type = TokenType::KwInt32;
-                                else if (is("int64")) token.type = TokenType::KwInt64;
-                                else if (is("uint8")) token.type = TokenType::KwUInt8;
-                                else if (is("float")) token.type = TokenType::KwFloat32;
                                 else if (is("while")) token.type = TokenType::KwWhile;
                                 else if (is("break")) token.type = TokenType::KwBreak;
                                 else if (is("union")) token.type = TokenType::KwUnion;
@@ -537,10 +553,7 @@ namespace rlt {
                             }
 
                             case 6: {
-                                if (is("uint16")) token.type = TokenType::KwUInt16;
-                                else if (is("uint32")) token.type = TokenType::KwUInt32;
-                                else if (is("uint64")) token.type = TokenType::KwUInt64;
-                                else if (is("import")) token.type = TokenType::KwImport;
+                                if (is("import")) token.type = TokenType::KwImport;
                                 else if (is("switch")) token.type = TokenType::KwSwitch;
                                 else if (is("struct")) token.type = TokenType::KwStruct;
                                 else goto name;
@@ -549,11 +562,7 @@ namespace rlt {
                             }
 
                             case 7: {
-                                if (is("boolean")) token.type = TokenType::KwBoolean;
-                                else if (is("float32")) token.type = TokenType::KwFloat32;
-                                else if (is("float64")) token.type = TokenType::KwFloat64;
-                                else if (is("size_of")) token.type = TokenType::KwSizeOf;
-                                else if (is("private")) token.type = TokenType::KwPrivate;
+                                if (is("size_of")) token.type = TokenType::KwSizeOf;
                                 else goto name;
 
                                 break;
@@ -653,16 +662,22 @@ namespace rlt {
                             break;
                         }
                     } else {
-                        throw Error(Error::Type::Lexical, sourceLocation, "invalid token");
+                        throw core::Error(core::Error::Type::Lexical, sourceLocation, sourceLocation, "invalid token");
                         break;
                     }
                 }
             }
 
-            token.length = sourceLocation.pointer - start;
-            if (!token.text.data())
+            token.end = sourceLocation;
+
+            if (!token.text.data()) {
                 token.text = std::string_view(&source[start], token.text.size());
-            if (!token.text.size()) token.text = std::string_view(token.text.data(), token.length);
+            }
+
+            if (!token.text.size()) {
+                token.text = std::string_view(token.text.data(), sourceLocation.pointer - start);
+            }
+
             tokens.push_back(token);
         }
 

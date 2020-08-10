@@ -2,42 +2,106 @@
 
 namespace rlt {
     namespace parser {
-        TypeDeclaration::TypeDeclaration(Tag tag) {
+        TypeDeclaration::TypeDeclaration(Tag tag, const std::string &name) {
             this->tag = tag;
+            this->name = name;
         }
 
         TypeDeclaration::Tag TypeDeclaration::getTag() const {
             return tag;
         }
 
-        Type::Type(const std::shared_ptr<TypeDeclaration>& declaration, std::size_t pointer) {
-            this->declaration = declaration;
+        const std::string &TypeDeclaration::getName() const {
+            return name;
+        }
+
+        Type::Type(const std::shared_ptr<ASTNode>& baseType, std::size_t pointer) {
+            this->baseType = baseType;
             this->pointer = pointer;
         }
 
-        const std::shared_ptr<TypeDeclaration>& Type::getDeclaration() const {
-            return declaration;
+        const std::shared_ptr<ASTNode>& Type::getBaseType() const {
+            return baseType;
         }
 
         std::size_t Type::getPointer() const {
             return pointer;
         }
 
-        ASTVariableDeclaration::ASTVariableDeclaration(const std::shared_ptr<ASTNode>& target) {
-            this->target = target;
+        // Move ^^ these to Sema eventually.
+
+        ASTBuiltinType::ASTBuiltinType(Type builtinType) {
+            this->builtinType = builtinType;
         }
 
-        const std::shared_ptr<ASTNode> ASTVariableDeclaration::getTarget() const {
-            return target;
+        ASTBuiltinType::Type ASTBuiltinType::getBuiltinType() const {
+            return builtinType;
+        }
+
+        ASTType ASTBuiltinType::getType() const {
+            return ASTType::BuiltinType;
+        }
+
+        ASTVariableDeclaration::ASTVariableDeclaration(const std::shared_ptr<ASTNode>& name, const Type &targetTy) {
+            this->name = name;
+            this->targetTy = targetTy;
+        }
+
+        void ASTVariableDeclaration::setFlags(std::uint32_t flags) {
+            this->flags = flags;
+        }
+
+        const std::shared_ptr<ASTNode> ASTVariableDeclaration::getName() const {
+            return name;
+        }
+
+        const Type &ASTVariableDeclaration::getTargetTy() const {
+            return targetTy;
+        }
+
+        std::uint32_t ASTVariableDeclaration::getFlags() const {
+            return flags;
         }
 
         ASTType ASTVariableDeclaration::getType() const {
             return ASTType::VariableDeclaration;
         }
 
-        ASTBlock::ASTBlock(const std::shared_ptr<ASTBlock>& parent, const std::vector<std::shared_ptr<ASTNode>>& nodes) {
-            this->parent = parent;
+        ASTVariableDefinition::ASTVariableDefinition(const std::shared_ptr<ASTVariableDeclaration> &decl, const std::shared_ptr<ASTNode> &expr) {
+            this->decl = decl;
+            this->expr = expr;
+        }
+
+        const std::shared_ptr<ASTVariableDeclaration> &ASTVariableDefinition::getDecl() const {
+            return decl;
+        }
+
+        const std::shared_ptr<ASTNode> &ASTVariableDefinition::getExpr() const {
+            return expr;
+        }
+
+        ASTType ASTVariableDefinition::getType() const {
+            return ASTType::VariableDefinition;
+        }
+
+        ASTReturn::ASTReturn(const std::shared_ptr<ASTNode> &value) {
+            this->value = value;
+        }
+
+        const std::shared_ptr<ASTNode> &ASTReturn::getValue() const {
+            return value;
+        }
+
+        ASTType ASTReturn::getType() const {
+            return ASTType::Return;
+        }
+
+        ASTBlock::ASTBlock(const std::vector<std::shared_ptr<ASTNode>>& nodes) {
             this->nodes = nodes;
+        }
+
+        void ASTBlock::setParent(const std::shared_ptr<ASTBlock> &parent) {
+            this->parent = parent;
         }
 
         const std::shared_ptr<ASTBlock>& ASTBlock::getParent() const {
@@ -52,8 +116,8 @@ namespace rlt {
             return ASTType::Block;
         }
 
-        ASTFunctionHeader::ASTFunctionHeader(const std::shared_ptr<ASTNode>& target, const std::vector<std::shared_ptr<ASTVariableDeclaration>>& paramDecls, const Type &rt) {
-            this->target = target;
+        ASTFunctionHeader::ASTFunctionHeader(const std::shared_ptr<ASTNode>& name, const std::vector<std::shared_ptr<ASTVariableDeclaration>>& paramDecls, const Type &rt) {
+            this->name = name;
             this->paramDecls = paramDecls;
             this->rt = rt;
         }
@@ -66,12 +130,20 @@ namespace rlt {
             this->flags = flags;
         }
 
+        const std::shared_ptr<ASTNode> &ASTFunctionHeader::getName() const {
+            return name;
+        }
+
         const std::shared_ptr<ASTFunctionBody>& ASTFunctionHeader::getBody() const {
             return body;
         }
 
         const std::vector<std::shared_ptr<ASTVariableDeclaration>>& ASTFunctionHeader::getParamDecls() const {
             return paramDecls;
+        }
+
+        const Type &ASTFunctionHeader::getRT() const {
+            return rt;
         }
 
         std::uint32_t ASTFunctionHeader::getFlags() const {
@@ -86,6 +158,14 @@ namespace rlt {
             this->block = block;
         }
 
+        void ASTFunctionBody::setHeader(const std::shared_ptr<ASTFunctionHeader> &header) {
+            this->header = header;
+        }
+
+        const std::shared_ptr<ASTFunctionHeader> &ASTFunctionBody::getHeader() const {
+            return header;
+        }
+
         const std::shared_ptr<ASTBlock>& ASTFunctionBody::getBlock() const {
             return block;
         }
@@ -94,27 +174,27 @@ namespace rlt {
             return ASTType::FunctionBody;
         }
 
-        ASTIf::ASTIf(const std::shared_ptr<ASTNode>& condition, const std::shared_ptr<ASTBlock>& block, const std::shared_ptr<ASTIf>& elif, const std::shared_ptr<ASTBlock>& elseBlock) {
+        ASTIf::ASTIf(const std::shared_ptr<ASTNode> &condition, const std::shared_ptr<ASTNode> &statement, const std::vector<std::pair<std::shared_ptr<ASTNode>, std::shared_ptr<ASTNode>>> &elifs, const std::shared_ptr<ASTNode> &elseStatement) {
             this->condition = condition;
-            this->block = block;
-            this->elif = elif;
-            this->elseBlock = elseBlock;
+            this->statement = statement;
+            this->elifs = elifs;
+            this->elseStatement = elseStatement;
         }
 
-        const std::shared_ptr<ASTNode>& ASTIf::getCondition() const {
+        const std::shared_ptr<ASTNode> &ASTIf::getCondition() const {
             return condition;
         }
 
-        const std::shared_ptr<ASTBlock>& ASTIf::getBlock() const {
-            return block;
+        const std::shared_ptr<ASTNode> &ASTIf::getStatement() const {
+            return statement;
         }
 
-        const std::shared_ptr<ASTIf>& ASTIf::getElif() const {
-            return elif;
+        const std::vector<std::pair<std::shared_ptr<ASTNode>, std::shared_ptr<ASTNode>>> ASTIf::getElifs() const {
+            return elifs;
         }
 
-        const std::shared_ptr<ASTBlock> ASTIf::getElseBlock() const {
-            return elseBlock;
+        const std::shared_ptr<ASTNode> &ASTIf::getElseStatement() const {
+            return elseStatement;
         }
 
         ASTType ASTIf::getType() const {
@@ -172,7 +252,7 @@ namespace rlt {
 
         ASTLiteral::ASTLiteral(char value) {
             literalType = Type::Character;
-            this->value = value;
+            this->value = (char)value;
         }
 
         ASTLiteral::ASTLiteral(bool value) {
@@ -209,6 +289,23 @@ namespace rlt {
 
         ASTType ASTLiteral::getType() const {
             return ASTType::Literal;
+        }
+
+        ASTConversion::ASTConversion(const std::shared_ptr<ASTNode> &from, const Type &to) {
+            this->from = from;
+            this->to = to;
+        }
+
+        const std::shared_ptr<ASTNode> &ASTConversion::getFrom() const {
+            return from;
+        }
+
+        const Type &ASTConversion::getTo() const {
+            return to;
+        }
+
+        ASTType ASTConversion::getType() const {
+            return ASTType::Conversion;
         }
 
         ASTUnaryOperator::ASTUnaryOperator(ASTUnaryOperator::Type unopType, const std::shared_ptr<ASTNode>& node) {

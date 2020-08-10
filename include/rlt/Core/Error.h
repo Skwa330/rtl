@@ -9,25 +9,28 @@
 #include "SourceLocation.h"
 
 namespace rlt {
-    namespace parser {
+    namespace core {
         class Error : public std::exception {
         public:
             enum class Type {
                 Lexical,
-                Syntactical
+                Syntactic,
+                Semantic
             };
         private:
             Type type;
 
-            SourceLocation sourceLocation;
+            SourceLocation begin, end;
 
             std::string message;
         public:
-            Error(Type type, const SourceLocation &sourceLocation, const std::string_view &message);
+            Error() = default;
+            Error(Type type, const SourceLocation &begin, const SourceLocation &end, const std::string_view &message);
 
             Type getType() const;
 
-            const SourceLocation &getSourceLocation() const;
+            const SourceLocation &getBegin() const;
+            const SourceLocation &getEnd() const;
 
             const std::string &getMessage() const;
             const char *what() const noexcept;

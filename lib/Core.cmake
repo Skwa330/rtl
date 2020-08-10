@@ -2,7 +2,8 @@ include_guard()
 
 project(rltCore)
 
-set(SOURCES ${CMAKE_CURRENT_LIST_DIR}/Core/Timing.cpp)
+set(SOURCES Error.cpp SourceLocation.cpp Timing.cpp)
+list(TRANSFORM SOURCES PREPEND ${CMAKE_CURRENT_LIST_DIR}/Core/)
 
 if (WIN32)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
