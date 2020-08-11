@@ -4,7 +4,7 @@
 
 // Right now every { and } get their own line because that's the easiest way to dump it LMAO... I'm not lazy... you are.
 
-namespace rlt {
+namespace rtl {
     namespace compiler {
         std::string escapeString(const std::string_view &s) {
             std::string result;
@@ -46,21 +46,21 @@ namespace rlt {
             return result;
         }
 
-        using namespace rlt::parser;
+        using namespace rtl::parser;
 
         std::string dumpType(const Type &ty) {
             std::string result;
 
-            for (std::size_t i = 0; i < ty.getPointer(); i++) {
+            for (std::size_t i = 0; i < ty.pointer; i++) {
                 result += "^";
             }
 
-            if (ty.getBaseType()->getType() == ASTType::BuiltinType) {
-                auto builtinType = std::reinterpret_pointer_cast<ASTBuiltinType>(ty.getBaseType());
+            if (ty.baseType->getType() == ASTType::BuiltinType) {
+                auto builtinType = std::reinterpret_pointer_cast<ASTBuiltinType>(ty.baseType);
 
                 using Bt = ASTBuiltinType::Type;
 
-                switch (builtinType->getBuiltinType()) {
+                switch (builtinType->builtinType) {
                     case Bt::Auto: {
                         result += "auto";
                         break;
@@ -126,8 +126,8 @@ namespace rlt {
                         break;
                     }
                 }
-            } else if (ty.getBaseType()->getType() == ASTType::Literal || (ty.getBaseType()->getType() == ASTType::BinaryOperator && ((std::reinterpret_pointer_cast<ASTBinaryOperator>(ty.getBaseType()))->getBinopType() == ASTBinaryOperator::Type::NamespaceResolution))) {
-                result += dumpNode(ty.getBaseType());
+            } else if (ty.baseType->getType() == ASTType::Literal || (ty.baseType->getType() == ASTType::BinaryOperator && ((std::reinterpret_pointer_cast<ASTBinaryOperator>(ty.baseType))->binopType == ASTBinaryOperator::Type::NamespaceResolution))) {
+                result += dumpNode(ty.baseType);
             } else {
                 result += "$UNKNOWN";
             }
@@ -141,18 +141,46 @@ namespace rlt {
             for (std::size_t i = 0; i < ind; i++) result += "    ";
             if (!node) return result;
 
-            if (node->getType() == ASTType::If) {
+            if (node->getType() == ASTType::Return) {
+                auto returnStatement = std::reinterpret_pointer_cast<ASTReturn>(node);
+
+                result += fmt::format("return {}", dumpNode(returnStatement->expr));
+            } else if (node->getType() == ASTType::Range) {
+                auto range = std::reinterpret_pointer_cast<ASTRange>(node);
+
+                result += fmt::format("{}..{}", dumpNode(range->lower), dumpNode(range->upper));
+            } else if (node->getType() == ASTType::For) {
+                auto forStatement = std::reinterpret_pointer_cast<ASTFor>(node);
+
+                result += fmt::format("for {}\n", dumpNode(forStatement->expr));
+                if (forStatement->statement->getType() == ASTType::Block) {
+                    result += dumpNode(forStatement->statement, ind);
+                } else {
+                    result += dumpNode(forStatement->statement, ind + 1);
+                }
+            } else if (node->getType() == ASTType::While) {
+                auto whileStatement = std::reinterpret_pointer_cast<ASTWhile>(node);
+
+                result += fmt::format("while {}\n", dumpNode(whileStatement->condition));
+                if (whileStatement->statement->getType() == ASTType::Block) {
+                    result += dumpNode(whileStatement->statement, ind);
+                } else {
+                    result += dumpNode(whileStatement->statement, ind + 1);
+                }
+            } else if (node->getType() == ASTType::If) {
                 auto ifStatement = std::reinterpret_pointer_cast<ASTIf>(node);
 
-                result += fmt::format("if {}\n", dumpNode(ifStatement->getCondition()));
-                if (ifStatement->getStatement()->getType() == ASTType::Block) {
-                    result += dumpNode(ifStatement->getStatement(), ind);
+                result += fmt::format("if {}\n", dumpNode(ifStatement->condition));
+                if (ifStatement->statement->getType() == ASTType::Block) {
+                    result += dumpNode(ifStatement->statement, ind);
                 } else {
-                    result += dumpNode(ifStatement->getStatement(), ind + 1);
+                    result += dumpNode(ifStatement->statement, ind + 1);
                 }
 
-                for (auto &elif : ifStatement->getElifs()) {
-                    result += fmt::format("\nelif {}\n", dumpNode(elif.first));
+                for (auto &elif : ifStatement->elifs) {
+                    result += "\n";
+                    for (std::size_t i = 0; i < ind; i++) result += "    ";
+                    result += fmt::format("elif {}\n", dumpNode(elif.first));
                     if (elif.second->getType() == ASTType::Block) {
                         result += dumpNode(elif.second, ind);
                     } else {
@@ -160,19 +188,19 @@ namespace rlt {
                     }
                 }
 
-                if (ifStatement->getElseStatement()) {
-                    result += "else\n";
-                    if (ifStatement->getElseStatement()->getType() == ASTType::Block) {
-                        result += dumpNode(ifStatement->getElseStatement(), ind);
+                if (ifStatement->elseStatement) {
+                    result += " else\n";
+                    if (ifStatement->elseStatement->getType() == ASTType::Block) {
+                        result += dumpNode(ifStatement->elseStatement, ind);
                     } else {
-                        result += dumpNode(ifStatement->getElseStatement(), ind + 1);
+                        result += dumpNode(ifStatement->elseStatement, ind + 1);
                     }
                 }
             } else if (node->getType() == ASTType::Block) {
                 auto block = std::reinterpret_pointer_cast<ASTBlock>(node);
 
                 result += "{\n";
-                for (auto &node : block->getNodes()) {
+                for (auto &node : block->nodes) {
                     result += dumpNode(node, ind + 1) + "\n";
                 }
 
@@ -184,20 +212,20 @@ namespace rlt {
             } else if (node->getType() == ASTType::VariableDeclaration) {
                 auto decl = std::reinterpret_pointer_cast<ASTVariableDeclaration>(node);
 
-                result += fmt::format("var {}: {}", dumpNode(decl->getName()), dumpType(decl->getTargetTy()));
+                result += fmt::format("{} {}: {}", decl->flags & (std::uint32_t)ASTVariableDeclaration::Flags::Constant ? "val" : "var", dumpNode(decl->name), dumpType(decl->targetTy));
             } else if (node->getType() == ASTType::VariableDefinition) {
                 auto defn = std::reinterpret_pointer_cast<ASTVariableDefinition>(node);
 
-                result += fmt::format("{} = {}", dumpNode(defn->getDecl()), dumpNode(defn->getExpr()));
+                result += fmt::format("{} = {}", dumpNode(defn->decl), dumpNode(defn->expr));
             } else if (node->getType() == ASTType::FunctionHeader) {
                 auto header = std::reinterpret_pointer_cast<ASTFunctionHeader>(node);
 
                 result += "fun ";
-                result += dumpNode(header->getName());
+                result += dumpNode(header->name);
                 result += " (";
 
                 bool first = true;
-                for (auto &decl : header->getParamDecls()) {
+                for (auto &decl : header->paramDecls) {
                     if (first) {
                         first = false;
                     } else {
@@ -209,52 +237,52 @@ namespace rlt {
 
                 result += ") ";
 
-                if (header->getFlags()) {
+                if (header->flags) {
                     result += "[";
 
-                    if (header->getFlags() & (std::uint32_t)ASTFunctionHeader::Flags::Private) {
+                    if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Private) {
                         result += "$private";
                     }
 
-                    if (header->getFlags() & (std::uint32_t)ASTFunctionHeader::Flags::Foreign) {
-                        if (header->getFlags() & (std::uint32_t)ASTFunctionHeader::Flags::Private) result += " ";
+                    if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Foreign) {
+                        if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Private) result += " ";
                         result += "$foreign";
                     }
 
-                    if (header->getFlags() & (std::uint32_t)ASTFunctionHeader::Flags::Extern) {
-                        if (header->getFlags() & (std::uint32_t)ASTFunctionHeader::Flags::Foreign || header->getFlags() & (std::uint32_t)ASTFunctionHeader::Flags::Private) result += " ";
+                    if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Extern) {
+                        if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Foreign || header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Private) result += " ";
                         result += "$extern";
                     }
 
-                    if (header->getFlags() & (std::uint32_t)ASTFunctionHeader::Flags::CCall) {
-                        if (header->getFlags() & (std::uint32_t)ASTFunctionHeader::Flags::Extern || header->getFlags() & (std::uint32_t)ASTFunctionHeader::Flags::Foreign || header->getFlags() & (std::uint32_t)ASTFunctionHeader::Flags::Private) result += " ";
+                    if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::CCall) {
+                        if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Extern || header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Foreign || header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Private) result += " ";
                         result += "$ccall";
                     }
 
-                    if (header->getFlags() & (std::uint32_t)ASTFunctionHeader::Flags::FastCall) {
-                        if (header->getFlags() & (std::uint32_t)ASTFunctionHeader::Flags::CCall || header->getFlags() & (std::uint32_t)ASTFunctionHeader::Flags::Extern || header->getFlags() & (std::uint32_t)ASTFunctionHeader::Flags::Foreign || header->getFlags() & (std::uint32_t)ASTFunctionHeader::Flags::Private) result += " ";
+                    if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::FastCall) {
+                        if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::CCall || header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Extern || header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Foreign || header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Private) result += " ";
                         result += "$fastcall";
                     }
 
                     result += "] ";
                 }
 
-                result += fmt::format("-> {}", dumpType(header->getRT()));
+                result += fmt::format("-> {}", dumpType(header->rt));
 
-                if (header->getBody()) {
-                    result += fmt::format("\n{}", dumpNode(header->getBody()->getBlock()));
+                if (header->body) {
+                    result += fmt::format("\n{}", dumpNode(header->body->block));
                 }
             } else if (node->getType() == ASTType::FunctionBody) {
                 auto body = std::reinterpret_pointer_cast<ASTFunctionBody>(node);
 
-                result += dumpNode(body->getBlock(), ind);
+                result += dumpNode(body->block, ind);
             } else if (node->getType() == ASTType::Call) {
                 auto call = std::reinterpret_pointer_cast<ASTCall>(node);
 
-                result += dumpNode(call->getCalled());
+                result += dumpNode(call->called);
                 result += "(";
                 bool first = true;
-                for (auto &node : call->getCallArgs()) {
+                for (auto &node : call->callArgs) {
                     if (first) {
                         first = false;
                     } else {
@@ -267,11 +295,11 @@ namespace rlt {
             } else if (node->getType() == ASTType::Subscript) {
                 auto sub = std::reinterpret_pointer_cast<ASTSubscript>(node);
 
-                result += fmt::format("{}[{}]", dumpNode(sub->getIndexed()), dumpNode(sub->getIndex()));
+                result += fmt::format("{}[{}]", dumpNode(sub->indexed), dumpNode(sub->index));
             } else if (node->getType() == ASTType::Literal) {
                 auto literal = std::reinterpret_pointer_cast<ASTLiteral>(node);
 
-                switch (literal->getLiteralType()) {
+                switch (literal->literalType) {
                     case ASTLiteral::Type::Integer: {
                         result += fmt::format("{}", literal->getInteger());
                         break;
@@ -305,20 +333,20 @@ namespace rlt {
             } else if (node->getType() == ASTType::Conversion) {
                 auto conversion = std::reinterpret_pointer_cast<ASTConversion>(node);
 
-                result += dumpNode(conversion->getFrom());
+                result += dumpNode(conversion->from);
                 result += " as (";
 
-                for (std::size_t i = 0; i < conversion->getTo().getPointer(); i++) {
+                for (std::size_t i = 0; i < conversion->to.pointer; i++) {
                     result += "^";
                 }
 
-                result += fmt::format("{})", dumpType(conversion->getTo()));
+                result += fmt::format("{})", dumpType(conversion->to));
             } else if (node->getType() == ASTType::UnaryOperator) {
                 auto unop = std::reinterpret_pointer_cast<ASTUnaryOperator>(node);
 
                 const char *opname;
 
-                switch (unop->getUnopType()) {
+                switch (unop->unopType) {
                     case ASTUnaryOperator::Type::LogicalNot: {
                         opname = "!";
                         break;
@@ -345,13 +373,13 @@ namespace rlt {
                     }
                 }
 
-                result += fmt::format("{}{}", opname, dumpNode(unop->getNode()));
+                result += fmt::format("{}{}", opname, dumpNode(unop->node));
             } else if (node->getType() == ASTType::BinaryOperator) {
                 auto binop = std::reinterpret_pointer_cast<ASTBinaryOperator>(node);
 
                 const char *opname;
 
-                switch (binop->getBinopType()) {
+                switch (binop->binopType) {
                     case ASTBinaryOperator::Type::Add: {
                         opname = "+";
                         break;
@@ -458,12 +486,12 @@ namespace rlt {
                     }
                 }
 
-                if (binop->getBinopType() != ASTBinaryOperator::Type::NamespaceResolution && binop->getBinopType() != ASTBinaryOperator::Type::MemberResolution) result += "(";
-                result += dumpNode(binop->getLeft());
-                if (binop->getBinopType() != ASTBinaryOperator::Type::NamespaceResolution && binop->getBinopType() != ASTBinaryOperator::Type::MemberResolution) result += fmt::format(" {} ", opname);
+                if (binop->binopType != ASTBinaryOperator::Type::NamespaceResolution && binop->binopType != ASTBinaryOperator::Type::MemberResolution) result += "(";
+                result += dumpNode(binop->left);
+                if (binop->binopType != ASTBinaryOperator::Type::NamespaceResolution && binop->binopType != ASTBinaryOperator::Type::MemberResolution) result += fmt::format(" {} ", opname);
                 else result += opname;
-                result += dumpNode(binop->getRight());
-                if (binop->getBinopType() != ASTBinaryOperator::Type::NamespaceResolution && binop->getBinopType() != ASTBinaryOperator::Type::MemberResolution) result += ")";
+                result += dumpNode(binop->right);
+                if (binop->binopType != ASTBinaryOperator::Type::NamespaceResolution && binop->binopType != ASTBinaryOperator::Type::MemberResolution) result += ")";
             }
 
             return result;

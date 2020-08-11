@@ -1,6 +1,6 @@
-#include "rlt/Core/Error.h"
+#include "rtl/Core/Error.h"
 
-namespace rlt {
+namespace rtl {
     namespace core {
         Error::Error(Type type, const SourceLocation &begin, const SourceLocation &end, const std::string_view &message) {
             this->type = type;

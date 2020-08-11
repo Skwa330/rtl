@@ -1,7 +1,0 @@
-fun main() {
-    var something: i32 = 10
-
-    if true {
-        print("Hello\n")
-    }
-}

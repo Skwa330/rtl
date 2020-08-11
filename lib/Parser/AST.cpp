@@ -1,41 +1,14 @@
-#include "rlt/parser/AST.h"
+#include "rtl/parser/AST.h"
 
-namespace rlt {
+namespace rtl {
     namespace parser {
-        TypeDeclaration::TypeDeclaration(Tag tag, const std::string &name) {
-            this->tag = tag;
-            this->name = name;
-        }
-
-        TypeDeclaration::Tag TypeDeclaration::getTag() const {
-            return tag;
-        }
-
-        const std::string &TypeDeclaration::getName() const {
-            return name;
-        }
-
-        Type::Type(const std::shared_ptr<ASTNode>& baseType, std::size_t pointer) {
+        Type::Type(const std::shared_ptr<ASTNode>& baseType, std::uint32_t pointer) {
             this->baseType = baseType;
             this->pointer = pointer;
         }
 
-        const std::shared_ptr<ASTNode>& Type::getBaseType() const {
-            return baseType;
-        }
-
-        std::size_t Type::getPointer() const {
-            return pointer;
-        }
-
-        // Move ^^ these to Sema eventually.
-
         ASTBuiltinType::ASTBuiltinType(Type builtinType) {
             this->builtinType = builtinType;
-        }
-
-        ASTBuiltinType::Type ASTBuiltinType::getBuiltinType() const {
-            return builtinType;
         }
 
         ASTType ASTBuiltinType::getType() const {
@@ -47,22 +20,6 @@ namespace rlt {
             this->targetTy = targetTy;
         }
 
-        void ASTVariableDeclaration::setFlags(std::uint32_t flags) {
-            this->flags = flags;
-        }
-
-        const std::shared_ptr<ASTNode> ASTVariableDeclaration::getName() const {
-            return name;
-        }
-
-        const Type &ASTVariableDeclaration::getTargetTy() const {
-            return targetTy;
-        }
-
-        std::uint32_t ASTVariableDeclaration::getFlags() const {
-            return flags;
-        }
-
         ASTType ASTVariableDeclaration::getType() const {
             return ASTType::VariableDeclaration;
         }
@@ -72,24 +29,12 @@ namespace rlt {
             this->expr = expr;
         }
 
-        const std::shared_ptr<ASTVariableDeclaration> &ASTVariableDefinition::getDecl() const {
-            return decl;
-        }
-
-        const std::shared_ptr<ASTNode> &ASTVariableDefinition::getExpr() const {
-            return expr;
-        }
-
         ASTType ASTVariableDefinition::getType() const {
             return ASTType::VariableDefinition;
         }
 
-        ASTReturn::ASTReturn(const std::shared_ptr<ASTNode> &value) {
-            this->value = value;
-        }
-
-        const std::shared_ptr<ASTNode> &ASTReturn::getValue() const {
-            return value;
+        ASTReturn::ASTReturn(const std::shared_ptr<ASTNode> &expr) {
+            this->expr = expr;
         }
 
         ASTType ASTReturn::getType() const {
@@ -98,18 +43,6 @@ namespace rlt {
 
         ASTBlock::ASTBlock(const std::vector<std::shared_ptr<ASTNode>>& nodes) {
             this->nodes = nodes;
-        }
-
-        void ASTBlock::setParent(const std::shared_ptr<ASTBlock> &parent) {
-            this->parent = parent;
-        }
-
-        const std::shared_ptr<ASTBlock>& ASTBlock::getParent() const {
-            return parent;
-        }
-
-        const std::vector<std::shared_ptr<ASTNode>> ASTBlock::getNodes() const {
-            return nodes;
         }
 
         ASTType ASTBlock::getType() const {
@@ -122,34 +55,6 @@ namespace rlt {
             this->rt = rt;
         }
 
-        void ASTFunctionHeader::setBody(const std::shared_ptr<ASTFunctionBody> body) {
-            this->body = body;
-        }
-
-        void ASTFunctionHeader::setFlags(std::uint32_t flags) {
-            this->flags = flags;
-        }
-
-        const std::shared_ptr<ASTNode> &ASTFunctionHeader::getName() const {
-            return name;
-        }
-
-        const std::shared_ptr<ASTFunctionBody>& ASTFunctionHeader::getBody() const {
-            return body;
-        }
-
-        const std::vector<std::shared_ptr<ASTVariableDeclaration>>& ASTFunctionHeader::getParamDecls() const {
-            return paramDecls;
-        }
-
-        const Type &ASTFunctionHeader::getRT() const {
-            return rt;
-        }
-
-        std::uint32_t ASTFunctionHeader::getFlags() const {
-            return flags;
-        }
-
         ASTType ASTFunctionHeader::getType() const {
             return ASTType::FunctionHeader;
         }
@@ -158,20 +63,43 @@ namespace rlt {
             this->block = block;
         }
 
-        void ASTFunctionBody::setHeader(const std::shared_ptr<ASTFunctionHeader> &header) {
-            this->header = header;
-        }
-
-        const std::shared_ptr<ASTFunctionHeader> &ASTFunctionBody::getHeader() const {
-            return header;
-        }
-
-        const std::shared_ptr<ASTBlock>& ASTFunctionBody::getBlock() const {
-            return block;
-        }
-
         ASTType ASTFunctionBody::getType() const {
             return ASTType::FunctionBody;
+        }
+
+        ASTWhile::ASTWhile(const std::shared_ptr<ASTNode> &condition, const std::shared_ptr<ASTNode> &statement) {
+            this->condition = condition;
+            this->statement = statement;
+        }
+
+        ASTType ASTWhile::getType() const {
+            return ASTType::While;
+        }
+
+        ASTFor::ASTFor(const std::shared_ptr<ASTNode> &expr, const std::shared_ptr<ASTNode> &statement) {
+            this->expr = expr;
+            this->statement = statement;
+        }
+
+        ASTType ASTFor::getType() const {
+            return ASTType::For;
+        }
+
+        ASTRange::ASTRange(const std::shared_ptr<ASTNode> &lower, const std::shared_ptr<ASTNode> &upper) {
+            this->lower = lower;
+            this->upper = upper;
+        }
+
+        ASTType ASTRange::getType() const {
+            return ASTType::Range;
+        }
+
+        ASTType ASTContinue::getType() const {
+            return ASTType::Continue;
+        }
+
+        ASTType ASTBreak::getType() const {
+            return ASTType::Break;
         }
 
         ASTIf::ASTIf(const std::shared_ptr<ASTNode> &condition, const std::shared_ptr<ASTNode> &statement, const std::vector<std::pair<std::shared_ptr<ASTNode>, std::shared_ptr<ASTNode>>> &elifs, const std::shared_ptr<ASTNode> &elseStatement) {
@@ -179,22 +107,6 @@ namespace rlt {
             this->statement = statement;
             this->elifs = elifs;
             this->elseStatement = elseStatement;
-        }
-
-        const std::shared_ptr<ASTNode> &ASTIf::getCondition() const {
-            return condition;
-        }
-
-        const std::shared_ptr<ASTNode> &ASTIf::getStatement() const {
-            return statement;
-        }
-
-        const std::vector<std::pair<std::shared_ptr<ASTNode>, std::shared_ptr<ASTNode>>> ASTIf::getElifs() const {
-            return elifs;
-        }
-
-        const std::shared_ptr<ASTNode> &ASTIf::getElseStatement() const {
-            return elseStatement;
         }
 
         ASTType ASTIf::getType() const {
@@ -206,14 +118,6 @@ namespace rlt {
             this->callArgs = callArgs;
         }
 
-        const std::shared_ptr<ASTNode>& ASTCall::getCalled() const {
-            return called;
-        }
-
-        const std::vector<std::shared_ptr<ASTNode>> ASTCall::getCallArgs() const {
-            return callArgs;
-        }
-
         ASTType ASTCall::getType() const {
             return ASTType::Call;
         }
@@ -223,14 +127,6 @@ namespace rlt {
             this->index = index;
         }
 
-        const std::shared_ptr<ASTNode>& ASTSubscript::getIndexed() const {
-            return indexed;
-        }
-
-        const std::shared_ptr<ASTNode>& ASTSubscript::getIndex() const {
-            return index;
-        }
-
         ASTType ASTSubscript::getType() const {
             return ASTType::Subscript;
         }
@@ -238,33 +134,34 @@ namespace rlt {
         ASTLiteral::ASTLiteral(std::uint64_t value) {
             literalType = Type::Integer;
             this->value = value;
+            hash = std::hash<decltype(value)>()(value);
         }
 
         ASTLiteral::ASTLiteral(double value) {
             literalType = Type::Decimal;
             this->value = value;
+            hash = std::hash<decltype(value)>()(value);
         }
 
         ASTLiteral::ASTLiteral(const std::string_view &value, Type ty) {
             literalType = ty;
             this->value = std::string(value.data(), value.size());
+            hash = std::hash<std::string_view>()(value);
         }
 
         ASTLiteral::ASTLiteral(char value) {
             literalType = Type::Character;
             this->value = (char)value;
+            hash = std::hash<decltype(value)>()(value);
         }
 
         ASTLiteral::ASTLiteral(bool value) {
             literalType = Type::Bool;
             this->value = value;
+            hash = std::hash<decltype(value)>()(value);
         }
 
         ASTLiteral::~ASTLiteral() {
-        }
-
-        ASTLiteral::Type ASTLiteral::getLiteralType() const {
-            return literalType;
         }
 
         std::uint64_t ASTLiteral::getInteger() const {
@@ -296,14 +193,6 @@ namespace rlt {
             this->to = to;
         }
 
-        const std::shared_ptr<ASTNode> &ASTConversion::getFrom() const {
-            return from;
-        }
-
-        const Type &ASTConversion::getTo() const {
-            return to;
-        }
-
         ASTType ASTConversion::getType() const {
             return ASTType::Conversion;
         }
@@ -311,14 +200,6 @@ namespace rlt {
         ASTUnaryOperator::ASTUnaryOperator(ASTUnaryOperator::Type unopType, const std::shared_ptr<ASTNode>& node) {
             this->unopType = unopType;
             this->node = node;
-        }
-
-        ASTUnaryOperator::Type ASTUnaryOperator::getUnopType() const {
-            return unopType;
-        }
-
-        const std::shared_ptr<ASTNode>& ASTUnaryOperator::getNode() const {
-            return node;
         }
 
         ASTType ASTUnaryOperator::getType() const {
@@ -329,18 +210,6 @@ namespace rlt {
             this->binopType = binopType;
             this->left = left;
             this->right = right;
-        }
-
-        ASTBinaryOperator::Type ASTBinaryOperator::getBinopType() const {
-            return binopType;
-        }
-
-        const std::shared_ptr<ASTNode> ASTBinaryOperator::getLeft() {
-            return left;
-        }
-
-        const std::shared_ptr<ASTNode> ASTBinaryOperator::getRight() {
-            return right;
         }
 
         ASTType ASTBinaryOperator::getType() const {

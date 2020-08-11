@@ -1,10 +1,10 @@
-#ifndef RLT_CORE_RECORD_H
-#define RLT_CORE_RECORD_H
+#ifndef RTL_CORE_RECORD_H
+#define RTL_CORE_RECORD_H
 
 #include <vector>
 #include <functional>
 
-namespace rlt {
+namespace rtl {
     namespace core {
         template<typename T>
         class Record {
@@ -41,4 +41,4 @@ namespace rlt {
     }
 }
 
-#endif /* RLT_CORE_RECORD_H */
+#endif /* RTL_CORE_RECORD_H */

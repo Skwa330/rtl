@@ -1,5 +1,5 @@
-#ifndef RLT_PARSER_LEXER_H
-#define RLT_PARSER_LEXER_H
+#ifndef RTL_PARSER_LEXER_H
+#define RTL_PARSER_LEXER_H
 
 #include <utility>
 #include <variant>
@@ -9,10 +9,10 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "rlt/Core/Error.h"
-#include "rlt/Core/SourceLocation.h"
+#include "rtl/Core/Error.h"
+#include "rtl/Core/SourceLocation.h"
 
-namespace rlt {
+namespace rtl {
     namespace parser {
         enum class TokenType {
             Invalid,
@@ -126,6 +126,7 @@ namespace rlt {
             KwNamespace,
 
             KwFun,
+            KwReturn,
 
             KwIf,
             KwElif,
@@ -179,4 +180,4 @@ namespace rlt {
     }
 }
 
-#endif /* RLT_PARSER_LEXER_H */
+#endif /* RTL_PARSER_LEXER_H */

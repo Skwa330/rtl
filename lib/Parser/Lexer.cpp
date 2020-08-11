@@ -1,9 +1,9 @@
-#include "rlt/Parser/Lexer.h"
+#include "rtl/Parser/Lexer.h"
 #include <fmt/format.h>
 
 #include <cctype>
 
-namespace rlt {
+namespace rtl {
     namespace parser {
         void Lexer::next() {
             if (source[sourceLocation.pointer++] == '\n') {
@@ -506,7 +506,6 @@ namespace rlt {
                                 else if (is("u8")) token.type = TokenType::KwI8;
                                 else if (is("as")) token.type = TokenType::KwAs;
                                 else if (is("if")) token.type = TokenType::KwIf;
-                                else if (is("for")) token.type = TokenType::KwFor;
                                 else goto name;
 
                                 break;
@@ -525,6 +524,7 @@ namespace rlt {
                                 else if (is("u64")) token.type = TokenType::KwU64;
                                 else if (is("f32")) token.type = TokenType::KwF32;
                                 else if (is("f64")) token.type = TokenType::KwF64;
+                                else if (is("for")) token.type = TokenType::KwFor;
                                 else goto name;
 
                                 break;
@@ -556,6 +556,7 @@ namespace rlt {
                                 if (is("import")) token.type = TokenType::KwImport;
                                 else if (is("switch")) token.type = TokenType::KwSwitch;
                                 else if (is("struct")) token.type = TokenType::KwStruct;
+                                else if (is("return")) token.type = TokenType::KwReturn;
                                 else goto name;
 
                                 break;

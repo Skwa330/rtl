@@ -1,5 +1,5 @@
-#ifndef RLT_PARSER_ERROR_H
-#define RLT_PARSER_ERROR_H
+#ifndef RTL_PARSER_ERROR_H
+#define RTL_PARSER_ERROR_H
 
 #include <exception>
 #include <string_view>
@@ -8,7 +8,7 @@
 
 #include "SourceLocation.h"
 
-namespace rlt {
+namespace rtl {
     namespace core {
         class Error : public std::exception {
         public:
@@ -38,4 +38,4 @@ namespace rlt {
     }
 }
 
-#endif /* RLT_PARSER_ERROR_H  */
+#endif /* RTL_PARSER_ERROR_H  */

@@ -1,6 +1,6 @@
 include_guard()
 
-project(rltCore)
+project(rtlCore)
 
 set(SOURCES Error.cpp SourceLocation.cpp Timing.cpp)
 list(TRANSFORM SOURCES PREPEND ${CMAKE_CURRENT_LIST_DIR}/Core/)
@@ -11,5 +11,5 @@ endif()
 
 add_definitions(-DFMT_HEADER_ONLY)
 
-add_library(rltCore ${SOURCES})
-target_include_directories(rltCore PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../include ${CMAKE_CURRENT_LIST_DIR}/../deps/fmt/include)
+add_library(rtlCore ${SOURCES})
+target_include_directories(rtlCore PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../include ${CMAKE_CURRENT_LIST_DIR}/../deps/fmt/include)

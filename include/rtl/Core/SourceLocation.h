@@ -1,11 +1,11 @@
-#ifndef RLT_PARSER_SOURCE_LOCATION_H
-#define RLT_PARSER_SOURCE_LOCATION_H
+#ifndef RTL_PARSER_SOURCE_LOCATION_H
+#define RTL_PARSER_SOURCE_LOCATION_H
 
 #include <string>
 #include <cstddef>
 #include <cstdint>
 
-namespace rlt {
+namespace rtl {
     namespace core {
         struct SourceLocation {
             std::string_view moduleName;
@@ -20,4 +20,4 @@ namespace rlt {
     }
 }
 
-#endif /* RLT_PARSER_SOURCE_LOCATION_H */
+#endif /* RTL_PARSER_SOURCE_LOCATION_H */

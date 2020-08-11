@@ -1,30 +1,11 @@
-#include "rlt/Parser/Parser.h"
-#include "rlt/Core/Error.h"
+#include "rtl/Parser/Parser.h"
+#include "rtl/Core/Error.h"
 #include <fmt/format.h>
 
-namespace rlt {
+namespace rtl {
     namespace parser {
         Parser::Parser(std::vector<std::shared_ptr<ASTNode>>& nodes) : nodes(nodes) {
             lexer = std::make_unique<Lexer>();
-
-            types = std::make_shared<Types>();
-
-            types->autoType = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::Auto);
-            types->noneType = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::None);
-            types->boolType = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::Bool);
-
-            types->i8Type = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::I8);
-            types->i16Type = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::I16);
-            types->i32Type = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::I32);
-            types->i64Type = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::I64);
-
-            types->u8Type = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::U8);
-            types->u16Type = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::U16);
-            types->u32Type = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::U32);
-            types->u64Type = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::U64);
-
-            types->f32Type = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::F32);
-            types->f64Type = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::F64);
         }
 
         void Parser::initFromSource(const std::string &moduleName, const std::string &source) {
@@ -40,15 +21,47 @@ namespace rlt {
         }
 
         void Parser::parseSyntaxTree() {
+            if (!matchSyntaxTree().second) throw error;
 
+            while (matchTopLevel().second) {
+                nodes.push_back(parseTopLevel());
+            }
+        }
+
+        MatchType Parser::matchSyntaxTree(std::size_t b) {
+            std::size_t p = 0;
+            MatchType c;
+
+            while ((c = matchTopLevel(b + p)).second) {
+                p += c.first;
+            }
+
+            if (c.first) {
+                return MatchType(p + c.first, false);
+            }
+
+            return MatchType(p, true);
         }
 
         std::shared_ptr<ASTNode> Parser::parseTopLevel() {
+            if (!matchTopLevel().second) throw error;
+
+            if (matchFunction().second) {
+                return parseFunction();
+            }
+
             return {};
         }
 
         MatchType Parser::matchTopLevel(std::size_t b) {
-            throw std::runtime_error("Unimplemented.");
+            std::size_t p = 0;
+            MatchType c;
+
+            if ((c = matchFunction(b + p)).second) {
+                return MatchType(p + c.first, true);
+            } else {
+                return MatchType(p + c.first, false);
+            }
         }
 
         Type Parser::parseType() {
@@ -63,41 +76,65 @@ namespace rlt {
             std::shared_ptr<ASTNode> baseType;
 
             if (lexer->peek().type == TokenType::KwNone) {
+                baseType = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::None);
+                baseType->begin = lexer->peek().begin;
+                baseType->end = lexer->peek().end;
                 lexer->eat();
-                baseType = types->noneType;
             } else if (lexer->peek().type == TokenType::KwBool) {
+                baseType = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::Bool);
+                baseType->begin = lexer->peek().begin;
+                baseType->end = lexer->peek().end;
                 lexer->eat();
-                baseType = types->boolType;
             } else if (lexer->peek().type == TokenType::KwI8) {
+                baseType = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::I8);
+                baseType->begin = lexer->peek().begin;
+                baseType->end = lexer->peek().end;
                 lexer->eat();
-                baseType = types->i8Type;
             } else if (lexer->peek().type == TokenType::KwI16) {
+                baseType = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::I16);
+                baseType->begin = lexer->peek().begin;
+                baseType->end = lexer->peek().end;
                 lexer->eat();
-                baseType = types->i16Type;
             } else if (lexer->peek().type == TokenType::KwI32) {
+                baseType = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::I32);
+                baseType->begin = lexer->peek().begin;
+                baseType->end = lexer->peek().end;
                 lexer->eat();
-                baseType = types->i32Type;
             } else if (lexer->peek().type == TokenType::KwI64) {
+                baseType = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::I64);
+                baseType->begin = lexer->peek().begin;
+                baseType->end = lexer->peek().end;
                 lexer->eat();
-                baseType = types->i64Type;
             } else if (lexer->peek().type == TokenType::KwU8) {
+                baseType = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::U8);
+                baseType->begin = lexer->peek().begin;
+                baseType->end = lexer->peek().end;
                 lexer->eat();
-                baseType = types->u8Type;
             } else if (lexer->peek().type == TokenType::KwU16) {
+                baseType = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::U16);
+                baseType->begin = lexer->peek().begin;
+                baseType->end = lexer->peek().end;
                 lexer->eat();
-                baseType = types->u16Type;
             } else if (lexer->peek().type == TokenType::KwU32) {
+                baseType = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::U32);
+                baseType->begin = lexer->peek().begin;
+                baseType->end = lexer->peek().end;
                 lexer->eat();
-                baseType = types->u32Type;
             } else if (lexer->peek().type == TokenType::KwU64) {
+                baseType = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::U64);
+                baseType->begin = lexer->peek().begin;
+                baseType->end = lexer->peek().end;
                 lexer->eat();
-                baseType = types->u64Type;
             } else if (lexer->peek().type == TokenType::KwF32) {
+                baseType = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::F32);
+                baseType->begin = lexer->peek().begin;
+                baseType->end = lexer->peek().end;
                 lexer->eat();
-                baseType = types->f32Type;
             } else if (lexer->peek().type == TokenType::KwF64) {
+                baseType = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::F64);
+                baseType->begin = lexer->peek().begin;
+                baseType->end = lexer->peek().end;
                 lexer->eat();
-                baseType = types->f64Type;
             } else if (matchName().second) {
                 baseType = parseName();
             }
@@ -158,8 +195,6 @@ namespace rlt {
             }
         }
 
-        // change parseFunction to use matchVariableDeclaration and parseVariableDeclaration
-
         std::shared_ptr<ASTVariableDeclaration> Parser::parseVariableDeclaration() {
             if (!matchVariableDeclaration().second) throw error;
 
@@ -184,8 +219,8 @@ namespace rlt {
 
             auto decl = std::make_shared<ASTVariableDeclaration>(name, ty);
             decl->begin = begin;
-            decl->end = ty.getBaseType()->end;
-            decl->setFlags(flags);
+            decl->end = ty.baseType->end;
+            decl->flags = flags;
 
             return decl;
         }
@@ -204,13 +239,13 @@ namespace rlt {
             }
 
             if (lexer->peek(b + p).type != TokenType::Name) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected identifier.");
                 return MatchType(p, false);
             }
             ++p;
 
             if (lexer->peek(b + p).type != TokenType::Colon) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected ':'.");
                 return MatchType(p, false);
             }
             ++p;
@@ -234,7 +269,7 @@ namespace rlt {
                 flags |= (std::uint32_t)ASTVariableDeclaration::Flags::Constant;
             }
 
-            core::SourceLocation begin = lexer->peek().begin;
+            core::SourceLocation begin = lexer->peek().begin, end;
             lexer->eat(); // val or var
 
             auto name = std::make_shared<ASTLiteral>(lexer->peek().text, ASTLiteral::Type::Name);
@@ -248,14 +283,16 @@ namespace rlt {
                 lexer->eat();
 
                 ty = parseType();
+                end = ty.baseType->end;
             } else {
-                ty = Type(types->autoType, 0);
+                ty = Type(std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::Auto), 0);
+                end = name->end;
             }
 
             decl = std::make_shared<ASTVariableDeclaration>(name, ty);
             decl->begin = begin;
-            decl->end = decl->getTargetTy().getBaseType()->end;
-            decl->setFlags(flags);
+            decl->end = end;
+            decl->flags = flags;
 
             lexer->eat(); // =
 
@@ -281,7 +318,7 @@ namespace rlt {
             }
 
             if (lexer->peek(b + p).type != TokenType::Name) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected identifier.");
                 return MatchType(p, false);
             }
             ++p;
@@ -296,7 +333,7 @@ namespace rlt {
             }
 
             if (lexer->peek(b + p).type != TokenType::Equal) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected '='.");
                 return MatchType(p, false);
             }
             ++p;
@@ -320,6 +357,16 @@ namespace rlt {
                 return parseVariableDefinition();
             } else if (matchVariableDeclaration().second) {
                 return parseVariableDeclaration();
+            } else if (matchReturn().second) {
+                return parseReturn();
+            } else if (matchFor().second) {
+                return parseFor();
+            } else if (matchWhile().second) {
+                return parseWhile();
+            } else if (matchContinue().second) {
+                return parseContinue();
+            } else if (matchBreak().second) {
+                return parseBreak();
             } else if (matchExpr().second) {
                 return parseExpr();
             }
@@ -346,10 +393,44 @@ namespace rlt {
             if ((c = matchVariableDefinition(b)).second) {
                 return c;
             } else if (c.first) {
-                return MatchType(c.first, false);
+                if (MatchType tmp; (tmp = matchVariableDeclaration(b)).second) {
+                    return tmp;
+                } else {
+                    return c;
+                }
             }
 
             if ((c = matchVariableDeclaration(b)).second) {
+                return c;
+            } else if (c.first) {
+                return MatchType(c.first, false);
+            }
+
+            if ((c = matchReturn(b)).second) {
+                return c;
+            } else if (c.first) {
+                return MatchType(c.first, false);
+            }
+
+            if ((c = matchFor(b)).second) {
+                return c;
+            } else if (c.first) {
+                return MatchType(c.first, false);
+            }
+
+            if ((c = matchWhile(b)).second) {
+                return c;
+            } else if (c.first) {
+                return MatchType(c.first, false);
+            }
+
+            if ((c = matchContinue(b)).second) {
+                return c;
+            } else if (c.first) {
+                return MatchType(c.first, false);
+            }
+
+            if ((c = matchBreak(b)).second) {
                 return c;
             } else if (c.first) {
                 return MatchType(c.first, false);
@@ -381,7 +462,7 @@ namespace rlt {
             // Set the current block as the parent to all of the sub blocks :)
             for (auto &node : nodes) {
                 if (node->getType() == ASTType::Block) {
-                    (std::reinterpret_pointer_cast<ASTBlock>(node))->setParent(block);
+                    (std::reinterpret_pointer_cast<ASTBlock>(node))->parent = block;
                 }
             }
 
@@ -411,6 +492,211 @@ namespace rlt {
                 return MatchType(p, false);
             }
             ++p;
+
+            return MatchType(p, true);
+        }
+
+        std::shared_ptr<ASTReturn> Parser::parseReturn() {
+            core::SourceLocation begin = lexer->peek().begin;
+            lexer->eat(); // return
+            core::SourceLocation end = lexer->peek().end;
+
+            std::shared_ptr<ASTNode> expr;
+
+            if (matchExpr().second) {
+                expr = parseExpr();
+                end = expr->end;
+            }
+
+            auto returnStatement = std::make_shared<ASTReturn>(expr);
+            returnStatement->begin = begin;
+            returnStatement->end = end;
+            return returnStatement;
+        }
+
+        MatchType Parser::matchReturn(std::size_t b) {
+            std::size_t p = 0;
+            MatchType c;
+
+            if (lexer->peek(b + p).type != TokenType::KwReturn) {
+                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                return MatchType(p, false);
+            }
+            ++p;
+
+            if ((c = matchExpr(b + p)).second) {
+                p += c.first;
+            } else if (c.first) {
+                return MatchType(p + c.first, false);
+            }
+
+            return MatchType(p, true);
+        }
+
+        std::shared_ptr<ASTBreak> Parser::parseBreak() {
+            if (!matchBreak().second) throw error;
+
+            core::SourceLocation begin = lexer->peek().begin, end = lexer->peek().end;
+            lexer->eat();
+
+            auto breakStatement = std::make_shared<ASTBreak>();
+            breakStatement->begin = begin;
+            breakStatement->end = end;
+            return breakStatement;
+        }
+
+        MatchType Parser::matchBreak(std::size_t b) {
+            std::size_t p = 0;
+            MatchType c;
+
+            if (lexer->peek(b + p).type != TokenType::KwBreak) {
+                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                return MatchType(p, false);
+            }
+            ++p;
+
+            return MatchType(p, true);
+        }
+
+        std::shared_ptr<ASTContinue> Parser::parseContinue() {
+            if (!matchContinue().second) throw error;
+
+            core::SourceLocation begin = lexer->peek().begin, end = lexer->peek().end;
+            lexer->eat();
+
+            auto continueStatement = std::make_shared<ASTContinue>();
+            continueStatement->begin = begin;
+            continueStatement->end = end;
+            return continueStatement;
+        }
+
+        MatchType Parser::matchContinue(std::size_t b) {
+            std::size_t p = 0;
+            MatchType c;
+
+            if (lexer->peek(b + p).type != TokenType::KwContinue) {
+                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                return MatchType(p, false);
+            }
+            ++p;
+
+            return MatchType(p, true);
+        }
+
+        std::shared_ptr<ASTFor> Parser::parseFor() {
+            if (!matchFor().second) throw error;
+
+            lexer->eat(); // for
+
+            auto expr = parseRange();
+            auto statement = parseStatement();
+
+            auto forStatement = std::make_shared<ASTFor>(expr, statement);
+            forStatement->begin = expr->begin;
+            forStatement->end = statement->end;
+            return forStatement;
+        }
+
+        MatchType Parser::matchFor(std::size_t b) {
+            std::size_t p = 0;
+            MatchType c;
+
+            if (lexer->peek(b + p).type != TokenType::KwFor) {
+                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                return MatchType(p, false);
+            }
+            ++p;
+
+            if (!(c = matchRange(b + p)).second) {
+                return MatchType(p + c.first, false);
+            }
+            p += c.first;
+
+            if (!(c = matchStatement(b + p)).second) {
+                return MatchType(p + c.first, false);
+            }
+            p += c.first;
+
+            return MatchType(p, true);
+        }
+
+        std::shared_ptr<ASTRange> Parser::parseRange() {
+            if (!matchRange().second) throw error;
+
+            auto lower = parseExpr();
+            lexer->eat(); // ..
+            auto upper = parseExpr();
+
+            auto range = std::make_shared<ASTRange>(lower, upper);
+            range->begin = lower->begin;
+            range->end = upper->end;
+
+            return range;
+        }
+
+        MatchType Parser::matchRange(std::size_t b) {
+            std::size_t p = 0;
+            MatchType c;
+
+            if (!(c = matchExpr(b + p)).second) {
+                return MatchType(p + c.first, false);
+            }
+            p += c.first;
+
+            if (lexer->peek(b + p).type != TokenType::DotDot) {
+                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected '..'.");
+                return MatchType(p, false);
+            }
+            ++p;
+
+            if (!(c = matchExpr(b + p)).second) {
+                return MatchType(p + c.first, false);
+            }
+            p += c.first;
+
+            return MatchType(p, true);
+        }
+
+        std::shared_ptr<ASTWhile> Parser::parseWhile() {
+            if (!matchWhile().second) throw error;
+
+            core::SourceLocation begin = lexer->peek().begin;
+            lexer->eat(); // while;
+
+            std::shared_ptr<ASTNode> condition;
+
+            if (matchExpr().second) {
+                condition = parseExpr();
+            }
+
+            auto statement = parseStatement();
+
+            auto whileStatement = std::make_shared<ASTWhile>(condition, statement);
+            whileStatement->begin = begin;
+            whileStatement->end = statement->end;
+            return whileStatement;
+        }
+
+        MatchType Parser::matchWhile(std::size_t b) {
+            std::size_t p = 0;
+            MatchType c;
+
+            if (lexer->peek(b + p).type != TokenType::KwWhile) {
+                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected: '{:.{}}'", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                return MatchType(p + c.first, false);
+            }
+            ++p;
+
+            if ((c = matchExpr(b + p)).second) {
+                p += c.first;
+            } else if (c.first) {
+                return MatchType(p + c.first, false);
+            }
+
+            if (!(c = matchStatement(b + p)).second) {
+                return MatchType(p + c.first, false);
+            }
+            p += c.first;
 
             return MatchType(p, true);
         }
@@ -504,6 +790,7 @@ namespace rlt {
 
             std::uint32_t flags = 0;
 
+            core::SourceLocation begin = lexer->peek().begin, end;
             lexer->eat(); // fun
 
             auto name = parseName();
@@ -512,7 +799,7 @@ namespace rlt {
 
             lexer->eat(); // (
 
-            while (lexer->peek().type == TokenType::Name || lexer->peek().type == TokenType::KwVar) {
+            while (matchVariableDeclaration().second) {
                 auto decl = parseVariableDeclaration();
                 paramDecls.push_back(decl);
 
@@ -547,6 +834,7 @@ namespace rlt {
                     }
                 }
 
+                end = lexer->peek().end; // In case we have implicit return type we need the proper source location for 'end')
                 lexer->eat(); // ]
             }
 
@@ -555,19 +843,20 @@ namespace rlt {
             if (lexer->peek().type == TokenType::Arrow) {
                 lexer->eat(); // ->
                 rt = parseType();
+                end = rt.baseType->end;
             } else {
-                rt = Type(types->noneType, 0);
+                rt = Type(std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::None), 0);
             }
 
             auto functionHeader = std::make_shared<ASTFunctionHeader>(name, paramDecls, rt);
-            functionHeader->begin = name->begin;
-            functionHeader->end = rt.getBaseType()->end;
-            functionHeader->setFlags(flags);
+            functionHeader->begin = begin;
+            functionHeader->end = end;
+            functionHeader->flags = flags;
 
             if (matchBlock().second) {
                 auto functionBody = std::make_shared<ASTFunctionBody>(parseBlock());
-                functionHeader->setBody(functionBody);
-                functionBody->setHeader(functionHeader);
+                functionHeader->body = functionBody;
+                functionBody->header = functionHeader;
             }
 
             return functionHeader;
@@ -684,20 +973,20 @@ namespace rlt {
                     lexer->eat();
 
                     result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::Assign, result, parseAssignment());
-                    result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getLeft()->begin;
-                    result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getRight()->end;
+                    result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->left->begin;
+                    result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->right->end;
                     return result;
                 }
 
                 lexer->eat();
 
                 auto interm = std::make_shared<ASTBinaryOperator>(intermTy, result, parseAssignment());
-                interm->begin = interm->getLeft()->begin;
-                interm->end = interm->getRight()->end;
+                interm->begin = interm->left->begin;
+                interm->end = interm->right->end;
 
                 result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::Assign, result, interm);
-                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getLeft()->begin;
-                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getRight()->end;
+                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->left->begin;
+                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->right->end;
             }
 
             return result;
@@ -711,8 +1000,8 @@ namespace rlt {
                 lexer->eat();
 
                 result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::LogicalOr, result, parseLogicalAnd());
-                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getLeft()->begin;
-                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getRight()->end;
+                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->left->begin;
+                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->right->end;
             }
 
             return result;
@@ -726,8 +1015,8 @@ namespace rlt {
                 lexer->eat();
 
                 result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::LogicalAnd, result, parseDirectComparison());
-                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getLeft()->begin;
-                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getRight()->end;
+                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->left->begin;
+                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->right->end;
             }
 
             return result;
@@ -744,8 +1033,8 @@ namespace rlt {
                 lexer->eat();
 
                 result = std::make_shared<ASTBinaryOperator>(ty, result, parseComparison());
-                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getLeft()->begin;
-                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getRight()->end;
+                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->left->begin;
+                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->right->end;
             }
 
             return result;
@@ -764,8 +1053,8 @@ namespace rlt {
                 lexer->eat();
 
                 result = std::make_shared<ASTBinaryOperator>(ty, result, parseBitOr());
-                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getLeft()->begin;
-                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getRight()->end;
+                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->left->begin;
+                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->right->end;
             }
 
             return result;
@@ -779,8 +1068,8 @@ namespace rlt {
                 lexer->eat();
 
                 result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::BitOr, result, parseBitXor());
-                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getLeft()->begin;
-                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getRight()->end;
+                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->left->begin;
+                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->right->end;
             }
 
             return result;
@@ -794,8 +1083,8 @@ namespace rlt {
                 lexer->eat();
 
                 result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::BitXor, result, parseBitAnd());
-                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getLeft()->begin;
-                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getRight()->end;
+                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->left->begin;
+                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->right->end;
             }
 
             return result;
@@ -809,8 +1098,8 @@ namespace rlt {
                 lexer->eat();
 
                 result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::BitAnd, result, parseBitShift());
-                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getLeft()->begin;
-                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getRight()->end;
+                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->left->begin;
+                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->right->end;
             }
 
             return result;
@@ -827,8 +1116,8 @@ namespace rlt {
                 lexer->eat();
 
                 result = std::make_shared<ASTBinaryOperator>(ty, result, parseTerm());
-                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getLeft()->begin;
-                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getRight()->end;
+                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->left->begin;
+                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->right->end;
             }
 
             return result;
@@ -841,12 +1130,12 @@ namespace rlt {
             while (lexer->peek().type == TokenType::Add || lexer->peek().type == TokenType::Subtract) {
                 ASTBinaryOperator::Type ty;
                 if (lexer->peek().type == TokenType::Add) ty = ASTBinaryOperator::Type::Add;
-                else if (lexer->peek().type == TokenType::Add) ty = ASTBinaryOperator::Type::Subtract;
+                else if (lexer->peek().type == TokenType::Subtract) ty = ASTBinaryOperator::Type::Subtract;
                 lexer->eat();
 
                 result = std::make_shared<ASTBinaryOperator>(ty, result, parseFactor());
-                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getLeft()->begin;
-                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getRight()->end;;
+                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->left->begin;
+                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->right->end;;
             }
 
             return result;
@@ -864,8 +1153,8 @@ namespace rlt {
                 lexer->eat();
 
                 result = std::make_shared<ASTBinaryOperator>(ty, result, parseConversion());
-                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getLeft()->begin;
-                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getRight()->end;
+                result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->left->begin;
+                result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->right->end;
             }
 
             return result;
@@ -879,7 +1168,7 @@ namespace rlt {
                 lexer->eat();
 
                 result = std::make_shared<ASTConversion>(result, parseType());
-                result->begin = (std::reinterpret_pointer_cast<ASTConversion>(result))->getFrom()->begin;
+                result->begin = (std::reinterpret_pointer_cast<ASTConversion>(result))->from->begin;
                 result->end = lexer->peek().end;
             }
 
@@ -912,7 +1201,7 @@ namespace rlt {
 
                 auto result = std::make_shared<ASTUnaryOperator>(ty, second);
                 result->begin = begin;
-                result->end = (std::reinterpret_pointer_cast<ASTUnaryOperator>(result))->getNode()->end;
+                result->end = (std::reinterpret_pointer_cast<ASTUnaryOperator>(result))->node->end;
 
                 begin = lexer->peek().begin;
                 return result;
@@ -941,7 +1230,7 @@ namespace rlt {
                     }
 
                     result = std::make_shared<ASTCall>(result, callArgs);
-                    result->begin = (std::reinterpret_pointer_cast<ASTCall>(result))->getCalled()->begin;
+                    result->begin = (std::reinterpret_pointer_cast<ASTCall>(result))->called->begin;
                     result->end = lexer->peek().end;
 
                     lexer->eat(); // )
@@ -951,10 +1240,10 @@ namespace rlt {
                     lexer->eat(); // [
 
                     result = std::make_shared<ASTSubscript>(result, parseExpr());
-                    result->begin = (std::reinterpret_pointer_cast<ASTSubscript>(result))->getIndexed()->begin;
-                    result->end = (std::reinterpret_pointer_cast<ASTSubscript>(result))->getIndex()->end;
+                    result->begin = (std::reinterpret_pointer_cast<ASTSubscript>(result))->indexed->begin;
 
                     lexer->eat(); // ]
+                    result->end = lexer->peek().end;
                 } else if (lexer->peek().type == TokenType::Dot) {
                     lexer->eat(); // .
 
@@ -964,8 +1253,8 @@ namespace rlt {
                     lexer->eat();
 
                     result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::MemberResolution, result, n);
-                    result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getLeft()->begin;
-                    result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getLeft()->end;
+                    result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->left->begin;
+                    result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->left->end;
                 }
             }
 
@@ -1040,8 +1329,8 @@ namespace rlt {
                     lexer->eat();
 
                     result = std::make_shared<ASTBinaryOperator>(ASTBinaryOperator::Type::NamespaceResolution, result, second);
-                    result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getLeft()->begin;
-                    result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->getRight()->end;
+                    result->begin = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->left->begin;
+                    result->end = (std::reinterpret_pointer_cast<ASTBinaryOperator>(result))->right->end;
                 }
 
                 return result;

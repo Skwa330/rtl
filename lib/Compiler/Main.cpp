@@ -18,10 +18,11 @@
 #include <type_traits>
 #include <array>
 
-#include "rlt/Parser/Lexer.h"
-#include "rlt/Parser/Parser.h"
-#include "rlt/Core/Error.h"
-#include "rlt/Core/Record.h"
+#include "rtl/Parser/Lexer.h"
+#include "rtl/Parser/Parser.h"
+#include "rtl/Core/Error.h"
+
+#include "rtl/Sema/Driver.h"
 
 #include "Dump.h"
 
@@ -69,20 +70,18 @@ void colorizeTerminal() {
     #endif
 }
 
-void formatError(const rlt::core::Error &e, const std::string_view &source) {
+void formatError(const rtl::core::Error &e, const std::string_view &source) {
     const char *type = "";
 
-    if (e.getType() == rlt::core::Error::Type::Lexical) {
+    if (e.getType() == rtl::core::Error::Type::Lexical) {
         type = "lex ";
-    } else if (e.getType() == rlt::core::Error::Type::Syntactic) {
+    } else if (e.getType() == rtl::core::Error::Type::Syntactic) {
         type = "syntax ";
-    } else if (e.getType() == rlt::core::Error::Type::Semantic) {
+    } else if (e.getType() == rtl::core::Error::Type::Semantic) {
         type = "semantic ";
     }
 
-    fmt::print(stderr, "begin: {}, end: {}\n", e.getBegin().pointer, e.getEnd().pointer);
-
-    std::uint32_t line = e.getEnd().line;
+    std::uint32_t line = e.getBegin().line;
     fmt::print(stderr, "{}:{}:{}-{}: \033[31;1m{}error: \033[0m{}\n\n", e.getBegin().moduleName, line, e.getBegin().lexpos, e.getEnd().lexpos, type, e.getMessage());
     std::size_t errorLineIndex = getNthSubstr(line - 1,  source, "\n");
     if (errorLineIndex == -1) {
@@ -196,14 +195,25 @@ int main(int argc, char **argv) {
         }
     }
 
-    std::vector<std::shared_ptr<rlt::parser::ASTNode>> nodes;
-    auto parser = std::make_shared<rlt::parser::Parser>(nodes);
+    std::vector<std::shared_ptr<rtl::parser::ASTNode>> nodes;
+    auto parser = std::make_shared<rtl::parser::Parser>(nodes);
     parser->initFromFile(inputFiles[0]);
 
     try {
-        auto node = parser->parseFunction();
-        fmt::print("{}\n", rlt::compiler::dumpNode(node));
-    } catch (const rlt::core::Error &e) {
+        parser->parseSyntaxTree();
+
+        for (auto &node : nodes) {
+            fmt::print("{}\n", rtl::compiler::dumpNode(node));
+        }
+
+        std::vector<rtl::core::Error> errors;
+        auto driver = std::make_shared<rtl::sema::Driver>(nodes, errors);
+        driver->run();
+
+        for (auto &e : errors) {
+            formatError(e, parser->getLexer()->source); // THIS WON'T USE THE RIGHT SOURCE.
+        }
+    } catch (const rtl::core::Error &e) {
         formatError(e, parser->getLexer()->source);
     } catch (const std::exception &e) {
         fmt::print(stderr, "{}\n", e.what());

@@ -1,6 +1,6 @@
-#include "rlt/Core/Timing.h"
+#include "rtl/Core/Timing.h"
 
-namespace rlt {
+namespace rtl {
     namespace core {
         template<typename F, typename... ArgTypes>
         float calcTime(const F &f, ArgTypes... args) {

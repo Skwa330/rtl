@@ -1,41 +1,21 @@
-#ifndef RLT_PARSER_PARSER_H
-#define RLT_PARSER_PARSER_H
+#ifndef RTL_PARSER_PARSER_H
+#define RTL_PARSER_PARSER_H
 
-#include "rlt/Parser/Lexer.h"
-#include "rlt/Parser/AST.h"
+#include "rtl/Parser/Lexer.h"
+#include "rtl/Parser/AST.h"
 
-#include "rlt/Core/Error.h"
+#include "rtl/Core/Error.h"
 
 #include <utility>
 
-namespace rlt {
+namespace rtl {
     namespace parser {
-        struct Types {
-            std::shared_ptr<ASTBuiltinType> autoType; // Used for inference
-            std::shared_ptr<ASTBuiltinType> noneType;
-            std::shared_ptr<ASTBuiltinType> boolType;
-
-            std::shared_ptr<ASTBuiltinType> i8Type;
-            std::shared_ptr<ASTBuiltinType> i16Type;
-            std::shared_ptr<ASTBuiltinType> i32Type;
-            std::shared_ptr<ASTBuiltinType> i64Type;
-
-            std::shared_ptr<ASTBuiltinType> u8Type;
-            std::shared_ptr<ASTBuiltinType> u16Type;
-            std::shared_ptr<ASTBuiltinType> u32Type;
-            std::shared_ptr<ASTBuiltinType> u64Type;
-
-            std::shared_ptr<ASTBuiltinType> f32Type;
-            std::shared_ptr<ASTBuiltinType> f64Type;
-        };
-
         using MatchType = std::pair<std::size_t, bool>;
 
         class Parser {
         private:
             std::vector<std::shared_ptr<ASTNode>>& nodes;
             std::unique_ptr<Lexer> lexer;
-            std::shared_ptr<Types> types;
 
             core::Error error; // This is just how we save errors in the matching functions so we can actually report the correct thing. :)
         public:
@@ -45,9 +25,9 @@ namespace rlt {
             void initFromFile(const std::string &filepath);
 
             const std::unique_ptr<Lexer>& getLexer() const;
-            const std::shared_ptr<Types>& getTypes() const;
 
             void parseSyntaxTree();
+            MatchType matchSyntaxTree(std::size_t b = 0);
 
             std::shared_ptr<ASTNode> parseTopLevel(); // This is used so that we aren't copying code for things like namespaces
             MatchType matchTopLevel(std::size_t b = 0);
@@ -66,6 +46,24 @@ namespace rlt {
 
             std::shared_ptr<ASTBlock> parseBlock();
             MatchType matchBlock(std::size_t b = 0);
+
+            std::shared_ptr<ASTReturn> parseReturn();
+            MatchType matchReturn(std::size_t b = 0);
+
+            std::shared_ptr<ASTBreak> parseBreak();
+            MatchType matchBreak(std::size_t b = 0);
+
+            std::shared_ptr<ASTContinue> parseContinue();
+            MatchType matchContinue(std::size_t b = 0);
+
+            std::shared_ptr<ASTFor> parseFor();
+            MatchType matchFor(std::size_t b = 0);
+
+            std::shared_ptr<ASTRange> parseRange();
+            MatchType matchRange(std::size_t b = 0);
+
+            std::shared_ptr<ASTWhile> parseWhile();
+            MatchType matchWhile(std::size_t b = 0);
 
             std::shared_ptr<ASTIf> parseIf();
             MatchType matchIf(std::size_t b = 0);
@@ -120,4 +118,4 @@ namespace rlt {
     }
 }
 
-#endif /* RLT_PARSER_PARSER_H */
+#endif /* RTL_PARSER_PARSER_H */
