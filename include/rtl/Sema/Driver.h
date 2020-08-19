@@ -15,7 +15,7 @@ namespace rtl {
             std::vector<std::shared_ptr<parser::ASTNode>> &nodes;
             std::vector<core::Error> &errors;
 
-            BuiltinTypes builtinTypes;
+            std::shared_ptr<BuiltinTypes> builtinTypes;
         public:
             Driver(std::vector<std::shared_ptr<parser::ASTNode>> &nodes, std::vector<core::Error> &errors);
 

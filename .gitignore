@@ -1,4 +1,5 @@
+builds/
 TODO.txt
-build*/
+local-build
 db*/
 *.sh

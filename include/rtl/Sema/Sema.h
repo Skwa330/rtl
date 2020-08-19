@@ -1,6 +1,8 @@
 #ifndef RTL_SEMA_SEMA_H
 #define RTL_SEMA_SEMA_H
 
+#include "Type.h"
+
 namespace rtl {
     namespace sema {
         struct BuiltinTypes {

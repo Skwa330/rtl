@@ -5,7 +5,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/Parser.cmake)
 
 project(rtlSema)
 
-set(SOURCES Driver.cpp Type.cpp Validator.cpp)
+set(SOURCES Driver.cpp Type.cpp Typer.cpp Validator.cpp)
 list(TRANSFORM SOURCES PREPEND ${CMAKE_CURRENT_LIST_DIR}/Sema/)
 
 if (WIN32)

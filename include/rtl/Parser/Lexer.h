@@ -1,13 +1,13 @@
 #ifndef RTL_PARSER_LEXER_H
 #define RTL_PARSER_LEXER_H
 
+#include <cstddef>
+#include <cstdint>
+
 #include <utility>
 #include <variant>
 #include <string>
 #include <vector>
-
-#include <cstddef>
-#include <cstdint>
 
 #include "rtl/Core/Error.h"
 #include "rtl/Core/SourceLocation.h"
@@ -124,6 +124,8 @@ namespace rtl {
 
             KwImport,
             KwNamespace,
+
+            KwPub,
 
             KwFun,
             KwReturn,

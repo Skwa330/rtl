@@ -126,7 +126,7 @@ namespace rtl {
                         break;
                     }
                 }
-            } else if (ty.baseType->getType() == ASTType::Literal || (ty.baseType->getType() == ASTType::BinaryOperator && ((std::reinterpret_pointer_cast<ASTBinaryOperator>(ty.baseType))->binopType == ASTBinaryOperator::Type::NamespaceResolution))) {
+            } else if (ty.baseType->getType() == ASTType::Expression) {
                 result += dumpNode(ty.baseType);
             } else {
                 result += "$UNKNOWN";
@@ -220,6 +220,10 @@ namespace rtl {
             } else if (node->getType() == ASTType::FunctionHeader) {
                 auto header = std::reinterpret_pointer_cast<ASTFunctionHeader>(node);
 
+                if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Public) {
+                    result += "pub ";
+                }
+
                 result += "fun ";
                 result += dumpNode(header->name);
                 result += " (";
@@ -240,27 +244,22 @@ namespace rtl {
                 if (header->flags) {
                     result += "[";
 
-                    if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Private) {
-                        result += "$private";
-                    }
-
                     if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Foreign) {
-                        if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Private) result += " ";
                         result += "$foreign";
                     }
 
                     if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Extern) {
-                        if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Foreign || header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Private) result += " ";
+                        if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Foreign) result += " ";
                         result += "$extern";
                     }
 
                     if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::CCall) {
-                        if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Extern || header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Foreign || header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Private) result += " ";
+                        if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Extern || header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Foreign) result += " ";
                         result += "$ccall";
                     }
 
                     if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::FastCall) {
-                        if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::CCall || header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Extern || header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Foreign || header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Private) result += " ";
+                        if (header->flags & (std::uint32_t)ASTFunctionHeader::Flags::CCall || header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Extern || header->flags & (std::uint32_t)ASTFunctionHeader::Flags::Foreign) result += " ";
                         result += "$fastcall";
                     }
 
@@ -276,222 +275,226 @@ namespace rtl {
                 auto body = std::reinterpret_pointer_cast<ASTFunctionBody>(node);
 
                 result += dumpNode(body->block, ind);
-            } else if (node->getType() == ASTType::Call) {
-                auto call = std::reinterpret_pointer_cast<ASTCall>(node);
+            } else if (node->getType() == ASTType::Expression) {
+                auto expr = std::reinterpret_pointer_cast<ASTExpression>(node);
 
-                result += dumpNode(call->called);
-                result += "(";
-                bool first = true;
-                for (auto &node : call->callArgs) {
-                    if (first) {
-                        first = false;
-                    } else {
-                        result += ", ";
+                if (expr->getExprType() == ASTExpression::Type::Call) {
+                    auto call = std::reinterpret_pointer_cast<ASTCall>(node);
+
+                    result += dumpNode(call->called);
+                    result += "(";
+                    bool first = true;
+                    for (auto &node : call->callArgs) {
+                        if (first) {
+                            first = false;
+                        } else {
+                            result += ", ";
+                        }
+
+                        result += dumpNode(node);
+                    }
+                    result += ")";
+                } else if (expr->getExprType() == ASTExpression::Type::Subscript) {
+                    auto sub = std::reinterpret_pointer_cast<ASTSubscript>(node);
+
+                    result += fmt::format("{}[{}]", dumpNode(sub->indexed), dumpNode(sub->index));
+                } else if (expr->getExprType() == ASTExpression::Type::Literal) {
+                    auto literal = std::reinterpret_pointer_cast<ASTLiteral>(node);
+
+                    switch (literal->literalType) {
+                        case ASTLiteral::Type::Integer: {
+                            result += fmt::format("{}", literal->getInteger());
+                            break;
+                        }
+
+                        case ASTLiteral::Type::Decimal: {
+                            result += fmt::format("{}", literal->getDecimal());
+                            break;
+                        }
+
+                        case ASTLiteral::Type::Name: {
+                            result += fmt::format("{}", literal->getString());
+                            break;
+                        }
+
+                        case ASTLiteral::Type::String: {
+                            result += fmt::format("\"{}\"", escapeString(literal->getString()));
+                            break;
+                        }
+
+                        case ASTLiteral::Type::Character: {
+                            result += fmt::format("'{}'", literal->getCharacter());
+                            break;
+                        }
+
+                        case ASTLiteral::Type::Bool: {
+                            result += fmt::format("{}", literal->getBool());
+                            break;
+                        }
+                    }
+                } else if (expr->getExprType() == ASTExpression::Type::Conversion) {
+                    auto conversion = std::reinterpret_pointer_cast<ASTConversion>(node);
+
+                    result += dumpNode(conversion->from);
+                    result += " as (";
+
+                    for (std::size_t i = 0; i < conversion->to.pointer; i++) {
+                        result += "^";
                     }
 
-                    result += dumpNode(node);
+                    result += fmt::format("{})", dumpType(conversion->to));
+                } else if (expr->getExprType() == ASTExpression::Type::UnaryOperator) {
+                    auto unop = std::reinterpret_pointer_cast<ASTUnaryOperator>(node);
+
+                    const char *opname;
+
+                    switch (unop->unopType) {
+                        case ASTUnaryOperator::Type::LogicalNot: {
+                            opname = "!";
+                            break;
+                        }
+
+                        case ASTUnaryOperator::Type::BitNot: {
+                            opname = "~";
+                            break;
+                        }
+
+                        case ASTUnaryOperator::Type::Minus: {
+                            opname = "-";
+                            break;
+                        }
+
+                        case ASTUnaryOperator::Type::Dereference: {
+                            opname = "*";
+                            break;
+                        }
+
+                        case ASTUnaryOperator::Type::AddressOf: {
+                            opname = "^";
+                            break;
+                        }
+                    }
+
+                    result += fmt::format("{}{}", opname, dumpNode(unop->node));
+                } else if (expr->getExprType() == ASTExpression::Type::BinaryOperator) {
+                    auto binop = std::reinterpret_pointer_cast<ASTBinaryOperator>(node);
+
+                    const char *opname;
+
+                    switch (binop->binopType) {
+                        case ASTBinaryOperator::Type::Add: {
+                            opname = "+";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::Subtract: {
+                            opname = "-";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::Modulo: {
+                            opname = "%";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::Multiply: {
+                            opname = "*";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::Divide: {
+                            opname = "/";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::BitShiftLeft: {
+                            opname = "<<";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::BitShiftRight: {
+                            opname = ">>";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::LogicalLessThan: {
+                            opname = "<";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::LogicalLessThanEqual: {
+                            opname = "<=";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::LogicalGreaterThan: {
+                            opname = ">";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::LogicalGreaterThanEqual: {
+                            opname = ">=";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::LogicalEqual: {
+                            opname = "==";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::LogicalNotEqual: {
+                            opname = "!=";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::BitAnd: {
+                            opname = "&";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::BitXor: {
+                            opname = "^";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::BitOr: {
+                            opname = "|";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::LogicalAnd: {
+                            opname = "&&";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::LogicalOr: {
+                            opname = "||";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::NamespaceResolution: {
+                            opname = "::";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::MemberResolution: {
+                            opname = ".";
+                            break;
+                        }
+
+                        case ASTBinaryOperator::Type::Assign: {
+                            opname = "=";
+                            break;
+                        }
+                    }
+
+                    if (binop->binopType != ASTBinaryOperator::Type::NamespaceResolution && binop->binopType != ASTBinaryOperator::Type::MemberResolution) result += "(";
+                    result += dumpNode(binop->left);
+                    if (binop->binopType != ASTBinaryOperator::Type::NamespaceResolution && binop->binopType != ASTBinaryOperator::Type::MemberResolution) result += fmt::format(" {} ", opname);
+                    else result += opname;
+                    result += dumpNode(binop->right);
+                    if (binop->binopType != ASTBinaryOperator::Type::NamespaceResolution && binop->binopType != ASTBinaryOperator::Type::MemberResolution) result += ")";
                 }
-                result += ")";
-            } else if (node->getType() == ASTType::Subscript) {
-                auto sub = std::reinterpret_pointer_cast<ASTSubscript>(node);
-
-                result += fmt::format("{}[{}]", dumpNode(sub->indexed), dumpNode(sub->index));
-            } else if (node->getType() == ASTType::Literal) {
-                auto literal = std::reinterpret_pointer_cast<ASTLiteral>(node);
-
-                switch (literal->literalType) {
-                    case ASTLiteral::Type::Integer: {
-                        result += fmt::format("{}", literal->getInteger());
-                        break;
-                    }
-
-                    case ASTLiteral::Type::Decimal: {
-                        result += fmt::format("{}", literal->getDecimal());
-                        break;
-                    }
-
-                    case ASTLiteral::Type::Name: {
-                        result += fmt::format("{}", literal->getString());
-                        break;
-                    }
-
-                    case ASTLiteral::Type::String: {
-                        result += fmt::format("\"{}\"", escapeString(literal->getString()));
-                        break;
-                    }
-
-                    case ASTLiteral::Type::Character: {
-                        result += fmt::format("'{}'", literal->getCharacter());
-                        break;
-                    }
-
-                    case ASTLiteral::Type::Bool: {
-                        result += fmt::format("{}", literal->getBool());
-                        break;
-                    }
-                }
-            } else if (node->getType() == ASTType::Conversion) {
-                auto conversion = std::reinterpret_pointer_cast<ASTConversion>(node);
-
-                result += dumpNode(conversion->from);
-                result += " as (";
-
-                for (std::size_t i = 0; i < conversion->to.pointer; i++) {
-                    result += "^";
-                }
-
-                result += fmt::format("{})", dumpType(conversion->to));
-            } else if (node->getType() == ASTType::UnaryOperator) {
-                auto unop = std::reinterpret_pointer_cast<ASTUnaryOperator>(node);
-
-                const char *opname;
-
-                switch (unop->unopType) {
-                    case ASTUnaryOperator::Type::LogicalNot: {
-                        opname = "!";
-                        break;
-                    }
-
-                    case ASTUnaryOperator::Type::BitNot: {
-                        opname = "~";
-                        break;
-                    }
-
-                    case ASTUnaryOperator::Type::Minus: {
-                        opname = "-";
-                        break;
-                    }
-
-                    case ASTUnaryOperator::Type::Dereference: {
-                        opname = "*";
-                        break;
-                    }
-
-                    case ASTUnaryOperator::Type::AddressOf: {
-                        opname = "^";
-                        break;
-                    }
-                }
-
-                result += fmt::format("{}{}", opname, dumpNode(unop->node));
-            } else if (node->getType() == ASTType::BinaryOperator) {
-                auto binop = std::reinterpret_pointer_cast<ASTBinaryOperator>(node);
-
-                const char *opname;
-
-                switch (binop->binopType) {
-                    case ASTBinaryOperator::Type::Add: {
-                        opname = "+";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::Subtract: {
-                        opname = "-";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::Modulo: {
-                        opname = "%";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::Multiply: {
-                        opname = "*";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::Divide: {
-                        opname = "/";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::BitShiftLeft: {
-                        opname = "<<";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::BitShiftRight: {
-                        opname = ">>";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::LogicalLessThan: {
-                        opname = "<";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::LogicalLessThanEqual: {
-                        opname = "<=";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::LogicalGreaterThan: {
-                        opname = ">";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::LogicalGreaterThanEqual: {
-                        opname = ">=";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::LogicalEqual: {
-                        opname = "==";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::LogicalNotEqual: {
-                        opname = "!=";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::BitAnd: {
-                        opname = "&";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::BitXor: {
-                        opname = "^";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::BitOr: {
-                        opname = "|";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::LogicalAnd: {
-                        opname = "&&";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::LogicalOr: {
-                        opname = "||";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::NamespaceResolution: {
-                        opname = "::";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::MemberResolution: {
-                        opname = ".";
-                        break;
-                    }
-
-                    case ASTBinaryOperator::Type::Assign: {
-                        opname = "=";
-                        break;
-                    }
-                }
-
-                if (binop->binopType != ASTBinaryOperator::Type::NamespaceResolution && binop->binopType != ASTBinaryOperator::Type::MemberResolution) result += "(";
-                result += dumpNode(binop->left);
-                if (binop->binopType != ASTBinaryOperator::Type::NamespaceResolution && binop->binopType != ASTBinaryOperator::Type::MemberResolution) result += fmt::format(" {} ", opname);
-                else result += opname;
-                result += dumpNode(binop->right);
-                if (binop->binopType != ASTBinaryOperator::Type::NamespaceResolution && binop->binopType != ASTBinaryOperator::Type::MemberResolution) result += ")";
             }
 
             return result;

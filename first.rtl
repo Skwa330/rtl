@@ -1,4 +1,9 @@
+fun println(string: ^u8) -> i32
+
 fun main() {
-    var something: i32
-    var something = 10
+    println("something")
+
+    if 10 == 11.112 {
+        println("10 is 11.112")
+    }
 }

@@ -36,17 +36,11 @@ namespace rtl {
             Continue,
             Break,
             If,
-            Call,
-            Subscript,
-            Literal,
-            Conversion,
-            UnaryOperator,
-            BinaryOperator
+            Expression
         };
 
         struct ASTNode {
             core::SourceLocation begin {}, end {};
-            std::shared_ptr<sema::Type> evalType;
 
             virtual ~ASTNode() = default;
 
@@ -79,6 +73,7 @@ namespace rtl {
 
         struct Type {
             std::shared_ptr<ASTNode> baseType;
+            std::shared_ptr<sema::Type> evaluatedType;
             std::uint32_t pointer;
 
             Type() = default;
@@ -87,7 +82,8 @@ namespace rtl {
 
         struct ASTVariableDeclaration : public ASTNode {
             enum class Flags : std::uint32_t {
-                Constant = 0x1
+                Public = 0x1,
+                Constant = 0x2
             };
 
             std::shared_ptr<ASTNode> name;
@@ -128,7 +124,7 @@ namespace rtl {
         struct ASTFunctionBody;
         struct ASTFunctionHeader : public ASTNode {
             enum class Flags : std::uint32_t {
-                Private = 0x1,
+                Public = 0x1,
                 Foreign = 0x2,
                 Extern = 0x4,
                 CCall = 0x8,
@@ -204,26 +200,42 @@ namespace rtl {
             ASTType getType() const;
         };
 
-        struct ASTCall : public ASTNode {
+        struct ASTExpression : public ASTNode {
+            enum class Type {
+                Call,
+                Subscript,
+                Literal,
+                Conversion,
+                UnaryOperator,
+                BinaryOperator
+            };
+
+            std::shared_ptr<sema::Type> evaluatedType;
+
+            virtual Type getExprType() const = 0;
+
+            ASTType getType() const;
+        };
+
+        struct ASTCall : public ASTExpression {
             std::shared_ptr<ASTNode> called;
             std::vector<std::shared_ptr<ASTNode>> callArgs;
 
             ASTCall(const std::shared_ptr<ASTNode>& called, const std::vector<std::shared_ptr<ASTNode>>& callArgs);
 
-            ASTType getType() const;
+            ASTExpression::Type getExprType() const;
         };
 
-        struct ASTSubscript : public ASTNode {
+        struct ASTSubscript : public ASTExpression {
             std::shared_ptr<ASTNode> indexed;
             std::shared_ptr<ASTNode> index;
 
             ASTSubscript(const std::shared_ptr<ASTNode>& indexed, const std::shared_ptr<ASTNode> index);
 
-            ASTType getType() const;
+            ASTExpression::Type getExprType() const;
         };
 
-        struct ASTLiteral : public ASTNode {
-        public:
+        struct ASTLiteral : public ASTExpression {
             enum class Type {
                 Integer,
                 Decimal,
@@ -252,19 +264,19 @@ namespace rtl {
             char getCharacter() const;
             bool getBool() const;
 
-            ASTType getType() const;
+            ASTExpression::Type getExprType() const;
         };
 
-        struct ASTConversion : public ASTNode {
+        struct ASTConversion : public ASTExpression {
             std::shared_ptr<ASTNode> from;
-            Type to;
+            rtl::parser::Type to;
 
-            ASTConversion(const std::shared_ptr<ASTNode> &from, const Type &to);
+            ASTConversion(const std::shared_ptr<ASTNode> &from, const rtl::parser::Type &to);
 
-            ASTType getType() const;
+            ASTExpression::Type getExprType() const;
         };
 
-        struct ASTUnaryOperator : public ASTNode {
+        struct ASTUnaryOperator : public ASTExpression {
             enum class Type {
                 LogicalNot,
                 BitNot,
@@ -280,10 +292,10 @@ namespace rtl {
 
             ASTUnaryOperator(Type unopType, const std::shared_ptr<ASTNode>& node);
 
-            ASTType getType() const;
+            ASTExpression::Type getExprType() const;
         };
 
-        struct ASTBinaryOperator : public ASTNode {
+        struct ASTBinaryOperator : public ASTExpression {
             enum class Type {
                 Add,
                 Subtract,
@@ -322,7 +334,7 @@ namespace rtl {
 
             ASTBinaryOperator(Type binopType, std::shared_ptr<ASTNode> left, std::shared_ptr<ASTNode> right);
 
-            ASTType getType() const;
+            ASTExpression::Type getExprType() const;
         };
     }
 }

@@ -15,10 +15,6 @@ namespace rtl {
             this->pointer = pointer;
         }
 
-        const std::shared_ptr<TypeDeclaration> &Type::getDecl() const {
-            return decl;
-        }
-
         std::uint32_t Type::getPointer() const {
             return pointer;
         }

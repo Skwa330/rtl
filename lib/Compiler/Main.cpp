@@ -1,3 +1,7 @@
+#include <string>
+#include <array>
+#include <type_traits>
+
 #include <fmt/format.h>
 #include <filesystem>
 #include <ya_getopt.h>
@@ -11,12 +15,6 @@
 #endif
 
 #endif
-
-#include <string>
-#include <system_error>
-
-#include <type_traits>
-#include <array>
 
 #include "rtl/Parser/Lexer.h"
 #include "rtl/Parser/Parser.h"

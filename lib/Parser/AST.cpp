@@ -113,13 +113,17 @@ namespace rtl {
             return ASTType::If;
         }
 
+        ASTType ASTExpression::getType() const {
+           return ASTType::Expression;
+        }
+
         ASTCall::ASTCall(const std::shared_ptr<ASTNode>& called, const std::vector<std::shared_ptr<ASTNode>>& callArgs) {
             this->called = called;
             this->callArgs = callArgs;
         }
 
-        ASTType ASTCall::getType() const {
-            return ASTType::Call;
+        ASTExpression::Type ASTCall::getExprType() const {
+            return ASTExpression::Type::Call;
         }
 
         ASTSubscript::ASTSubscript(const std::shared_ptr<ASTNode>& indexed, const std::shared_ptr<ASTNode> index) {
@@ -127,8 +131,8 @@ namespace rtl {
             this->index = index;
         }
 
-        ASTType ASTSubscript::getType() const {
-            return ASTType::Subscript;
+        ASTExpression::Type ASTSubscript::getExprType() const {
+            return ASTExpression::Type::Subscript;
         }
 
         ASTLiteral::ASTLiteral(std::uint64_t value) {
@@ -184,17 +188,17 @@ namespace rtl {
             return std::get<bool>(value);
         }
 
-        ASTType ASTLiteral::getType() const {
-            return ASTType::Literal;
+        ASTExpression::Type ASTLiteral::getExprType() const {
+            return ASTExpression::Type::Literal;
         }
 
-        ASTConversion::ASTConversion(const std::shared_ptr<ASTNode> &from, const Type &to) {
+        ASTConversion::ASTConversion(const std::shared_ptr<ASTNode> &from, const rtl::parser::Type &to) {
             this->from = from;
             this->to = to;
         }
 
-        ASTType ASTConversion::getType() const {
-            return ASTType::Conversion;
+        ASTExpression::Type ASTConversion::getExprType() const {
+            return ASTExpression::Type::Conversion;
         }
 
         ASTUnaryOperator::ASTUnaryOperator(ASTUnaryOperator::Type unopType, const std::shared_ptr<ASTNode>& node) {
@@ -202,8 +206,8 @@ namespace rtl {
             this->node = node;
         }
 
-        ASTType ASTUnaryOperator::getType() const {
-            return ASTType::UnaryOperator;
+        ASTExpression::Type ASTUnaryOperator::getExprType() const {
+            return ASTExpression::Type::UnaryOperator;
         }
 
         ASTBinaryOperator::ASTBinaryOperator(Type binopType, std::shared_ptr<ASTNode> left, std::shared_ptr<ASTNode> right) {
@@ -212,8 +216,8 @@ namespace rtl {
             this->right = right;
         }
 
-        ASTType ASTBinaryOperator::getType() const {
-            return ASTType::BinaryOperator;
+        ASTExpression::Type ASTBinaryOperator::getExprType() const {
+            return ASTExpression::Type::BinaryOperator;
         }
     }
 }

@@ -190,7 +190,7 @@ namespace rtl {
                 p += c.first;
                 return MatchType(p, true);
             } else {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{}'", lexer->peek(b + p).text));
                 return MatchType(p, false);
             }
         }
@@ -791,6 +791,12 @@ namespace rtl {
             std::uint32_t flags = 0;
 
             core::SourceLocation begin = lexer->peek().begin, end;
+
+            if (lexer->peek().type == TokenType::KwPub) {
+                flags |= (std::uint32_t)ASTFunctionHeader::Flags::Public;
+                lexer->eat();
+            }
+
             lexer->eat(); // fun
 
             auto name = parseName();
@@ -799,13 +805,34 @@ namespace rtl {
 
             lexer->eat(); // (
 
-            while (matchVariableDeclaration().second) {
-                auto decl = parseVariableDeclaration();
+            while (lexer->peek().type != TokenType::RightParen) {
+                std::uint32_t flags = 0;
+
+                if (lexer->peek().type == TokenType::KwVar) {
+                    lexer->eat();
+                } else if (lexer->peek().type == TokenType::KwVal) {
+                    flags |= (std::uint32_t)ASTVariableDeclaration::Flags::Constant;
+                    lexer->eat();
+                }
+
+                auto name = std::make_shared<ASTLiteral>(lexer->peek().text, ASTLiteral::Type::Name);
+                name->begin = lexer->peek().begin;
+                name->end = lexer->peek().end;
+                lexer->eat();
+
+                lexer->eat(); // :
+
+                auto type = parseType();
+
+                auto decl = std::make_shared<ASTVariableDeclaration>(name, type);
+                decl->flags = flags;
+
                 paramDecls.push_back(decl);
 
                 if (lexer->peek().type == TokenType::Comma) lexer->eat();
             }
 
+            end = lexer->peek().end;
             lexer->eat(); // )
 
             if (lexer->peek().type == TokenType::LeftBracket) {
@@ -819,9 +846,7 @@ namespace rtl {
                     name->end = lexer->peek().end;
                     lexer->eat();
 
-                    if (name->getString() == "private") {
-                        flags |= (std::uint32_t)ASTFunctionHeader::Flags::Private;
-                    } else if (name->getString() == "foreign") {
+                    if (name->getString() == "foreign") {
                         flags |= (std::uint32_t)ASTFunctionHeader::Flags::Foreign;
                     } else if (name->getString() == "extern") {
                         flags |= (std::uint32_t)ASTFunctionHeader::Flags::Extern;
@@ -866,8 +891,12 @@ namespace rtl {
             std::size_t p = 0;
             MatchType c;
 
+            if (lexer->peek(b + p).type == TokenType::KwPub) {
+                ++p;
+            }
+
             if (lexer->peek(b + p).type != TokenType::KwFun) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected 'fun'.");
+                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
                 return MatchType(p, false);
             }
             ++p;
@@ -883,7 +912,26 @@ namespace rtl {
             }
             ++p;
 
-            while ((c = matchVariableDeclaration(b + p)).second) {
+            while (lexer->peek(b + p).type != TokenType::RightParen) {
+                if (lexer->peek(b + p).type == TokenType::KwVar || lexer->peek(b + p).type == TokenType::KwVal) {
+                    ++p;
+                }
+
+                if (lexer->peek(b + p).type != TokenType::Name) {
+                    error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected identifier.");
+                    return MatchType(p, false);
+                }
+                ++p;
+
+                if (lexer->peek(b + p).type != TokenType::Colon) {
+                    error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected ':'.");
+                    return MatchType(p, false);
+                }
+                ++p;
+
+                if (!(c = matchType(b + p)).second) {
+                    return MatchType(p + c.first, false);
+                }
                 p += c.first;
 
                 if (lexer->peek(b + p).type != TokenType::Comma && lexer->peek(b + p).type != TokenType::RightParen) {
@@ -894,10 +942,6 @@ namespace rtl {
                 if (lexer->peek(b + p).type == TokenType::Comma) ++p;
             }
 
-            if (lexer->peek(b + p).type != TokenType::RightParen) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected ')'.");
-                return MatchType(p, false);
-            }
             ++p;
 
             if (lexer->peek(b + p).type == TokenType::LeftBracket) {

@@ -8,6 +8,15 @@
 
 #include <utility>
 
+/*
+      rtl operator precedence -
+      higher precedence = lower numbers = more priority
+
+      0 - integer, decimal, string, char name
+      1 - function call, subscript or member access
+      2 - !, ~, ^, *,
+*/
+
 namespace rtl {
     namespace parser {
         using MatchType = std::pair<std::size_t, bool>;

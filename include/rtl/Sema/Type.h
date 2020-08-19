@@ -36,12 +36,12 @@ namespace rtl {
 
         class Type {
         private:
-            std::shared_ptr<TypeDeclaration> decl;
             std::uint32_t pointer;
         public:
+            std::shared_ptr<TypeDeclaration> decl;
+
             Type(const std::shared_ptr<TypeDeclaration> &decl, std::uint32_t pointer);
 
-            const std::shared_ptr<TypeDeclaration> &getDecl() const;
             std::uint32_t getPointer() const;
         };
     }

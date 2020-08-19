@@ -1,5 +1,7 @@
 #include "rtl/Sema/Driver.h"
 
+#include "rtl/Sema/Validator.h"
+
 #include <fmt/format.h>
 
 using namespace rtl::parser;
@@ -28,11 +30,8 @@ namespace rtl {
         }
 
         void Driver::run() {
-            auto validator = std::make_shared<Validator>(nodes, errors);
-            validator->run();
-
-            // auto typer = std::make_shared<Typer>(builtinTypes, nodes, errors);
-            // typer->run();
+            auto validator = std::make_shared<Validator>(builtinTypes, nodes, errors);
+            validator->validate();
 
             // auto typeChecker = std::make_shared<TypeChecker>(builtinTypes, nodes, errors);
             // typeChecker->run();

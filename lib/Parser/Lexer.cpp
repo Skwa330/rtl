@@ -503,7 +503,7 @@ namespace rtl {
                         switch (length) {
                             case 2: {
                                 if (is("i8")) token.type = TokenType::KwI8;
-                                else if (is("u8")) token.type = TokenType::KwI8;
+                                else if (is("u8")) token.type = TokenType::KwU8;
                                 else if (is("as")) token.type = TokenType::KwAs;
                                 else if (is("if")) token.type = TokenType::KwIf;
                                 else goto name;
@@ -514,6 +514,7 @@ namespace rtl {
                             case 3: {
                                 if (is("val")) token.type = TokenType::KwVal;
                                 else if (is("var")) token.type = TokenType::KwVar;
+                                else if (is("pub")) token.type = TokenType::KwPub;
                                 else if (is("fun")) token.type = TokenType::KwFun;
                                 else if (is("any")) token.type = TokenType::KwAny;
                                 else if (is("i16")) token.type = TokenType::KwI16;
@@ -544,6 +545,8 @@ namespace rtl {
 
                             case 5: {
                                 if (is("false")) token.type = TokenType::KwFalse;
+                                else if (is("usize")) token.type = TokenType::KwU64; // Maybe I should make these platform-specific? idek.
+                                else if (is("isize")) token.type = TokenType::KwI64; // Maybe I should make these platform-specific? idek.
                                 else if (is("while")) token.type = TokenType::KwWhile;
                                 else if (is("break")) token.type = TokenType::KwBreak;
                                 else if (is("union")) token.type = TokenType::KwUnion;
