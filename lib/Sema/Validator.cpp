@@ -123,25 +123,67 @@ namespace rtl {
             if (left->getPointer() != right->getPointer()) return false;
             // Eventually check if they're the same structure, enumeration, or union.
 
+            auto tag = left->decl->getTag();
+
+            if (tag == TypeDeclaration::Tag::FunctionPrototype) {
+                FunctionPrototype &lpr = std::get<FunctionPrototype>(left->decl->info);
+                FunctionPrototype &rpr = std::get<FunctionPrototype>(right->decl->info);
+
+                if (!compareTypes(lpr.rt, rpr.rt)) {
+                    return false;
+                }
+
+                if (lpr.paramTypes.size() != rpr.paramTypes.size()) {
+                    return false;
+                }
+
+                auto npt = lpr.paramTypes.size();
+
+                for (std::size_t i = 0; i < npt; i++) {
+                    if (!compareTypes(lpr.paramTypes[i], rpr.paramTypes[i])) {
+                        return false;
+                    }
+                }
+            }
+
             return true;
         }
 
-        std::shared_ptr<parser::ASTNode> Validator::findQualified(const std::shared_ptr<parser::ASTNode> &qlf) {
+        std::shared_ptr<parser::ASTRef> Validator::findQualified(const std::shared_ptr<ASTNode> &qlf) {
+            if (currentFunction) {
+                for (auto &pd : currentFunction->paramDecls) {
+                    if (compareQualifiedNames(pd->name, qlf)) {
+                        auto result = std::make_shared<ASTRef>(pd);
+                        result->evaluatedType = pd->targetTy.evaluatedType;
+                        return result;
+                    }
+                }
+            }
+
             if (currentBlock) {
                 // Try to find variable in local scope
 
                 for (auto &node : currentBlock->nodes) {
+                    if (node == currentStatement) break;
+
                     if (node->getType() == ASTType::VariableDeclaration) {
-                        auto name = std::reinterpret_pointer_cast<ASTVariableDeclaration>(node)->name;
+                        auto decl = std::reinterpret_pointer_cast<ASTVariableDeclaration>(node);
+                        auto name = decl->name;
 
                         if (compareQualifiedNames(name, qlf)) {
-                            return node;
+                            auto result = std::make_shared<ASTRef>(node);
+                            result->evaluatedType = decl->targetTy.evaluatedType;
+                            return result;
                         }
                     } else if (node->getType() == ASTType::VariableDefinition) {
-                        auto name = std::reinterpret_pointer_cast<ASTVariableDefinition>(node)->decl->name;
+                        auto defn = std::reinterpret_pointer_cast<ASTVariableDefinition>(node);
+                        auto decl = defn->decl;
+                        auto name = decl->name;
 
                         if (compareQualifiedNames(name, qlf)) {
-                            return node;
+                            auto result = std::make_shared<ASTRef>(node);
+                            result->evaluatedType = decl->targetTy.evaluatedType;
+                            return result;
                         }
                     }
                 }
@@ -149,7 +191,10 @@ namespace rtl {
                 if (currentBlock->parent) {
                     auto last = currentBlock;
                     currentBlock = currentBlock->parent;
+                    auto lastStatement = currentStatement;
+                    currentStatement = currentBlock;
                     auto result = findQualified(qlf);
+                    currentStatement = lastStatement;
                     currentBlock = last;
                     return result;
                 }
@@ -157,23 +202,33 @@ namespace rtl {
 
             for (auto &node : nodes) {
                 if (node->getType() == ASTType::FunctionHeader) {
-                    auto name = std::reinterpret_pointer_cast<ASTFunctionHeader>(node)->name;
+                    auto function = std::reinterpret_pointer_cast<ASTFunctionHeader>(node);
+                    auto name = function->name;
 
                     // We don't have global variables yet, but we will; I don't want to add this later...
                     if (compareQualifiedNames(name, qlf)) {
-                        return node;
-                    } else if (node->getType() == ASTType::VariableDeclaration) {
-                        auto name = std::reinterpret_pointer_cast<ASTVariableDeclaration>(node)->name;
+                        auto result = std::make_shared<ASTRef>(node);
+                        result->evaluatedType = function->prototype;
+                        return result;
+                    }
+                } else if (node->getType() == ASTType::VariableDeclaration) {
+                    auto decl = std::reinterpret_pointer_cast<ASTVariableDeclaration>(node);
+                    auto name = decl->name;
 
-                        if (compareQualifiedNames(name, qlf)) {
-                            return node;
-                        }
-                    } else if (node->getType() == ASTType::VariableDefinition) {
-                        auto name = std::reinterpret_pointer_cast<ASTVariableDefinition>(node)->decl->name;
+                    if (compareQualifiedNames(name, qlf)) {
+                        auto result = std::make_shared<ASTRef>(node);
+                        result->evaluatedType = decl->targetTy.evaluatedType;
+                        return result;
+                    }
+                } else if (node->getType() == ASTType::VariableDefinition) {
+                    auto defn = std::reinterpret_pointer_cast<ASTVariableDefinition>(node);
+                    auto decl = defn->decl;
+                    auto name = decl->name;
 
-                        if (compareQualifiedNames(name, qlf)) {
-                            return node;
-                        }
+                    if (compareQualifiedNames(name, qlf)) {
+                        auto result = std::make_shared<ASTRef>(node);
+                        result->evaluatedType = decl->targetTy.evaluatedType;
+                        return result;
                     }
                 }
             }
@@ -213,6 +268,7 @@ namespace rtl {
             currentBlock = block;
 
             for (auto &node : block->nodes) {
+                currentStatement = node;
                 validateNode(node);
             }
 
@@ -232,6 +288,14 @@ namespace rtl {
         void Validator::validateVariableDefinition(const std::shared_ptr<ASTVariableDefinition> &defn) {
             validateVariableDeclaration(defn->decl);
             defn->expr = validateExpression(std::reinterpret_pointer_cast<ASTExpression>(defn->expr));
+
+            if (!defn->decl->targetTy.evaluatedType || (defn->decl->targetTy.baseType->getType() == ASTType::BuiltinType && std::reinterpret_pointer_cast<ASTBuiltinType>(defn->decl->targetTy.baseType)->builtinType == ASTBuiltinType::Type::Auto)) {
+                defn->decl->targetTy.evaluatedType = std::reinterpret_pointer_cast<ASTExpression>(defn->expr)->evaluatedType;
+            }
+
+            if (!compareTypes(defn->decl->targetTy.evaluatedType, std::reinterpret_pointer_cast<ASTExpression>(defn->expr)->evaluatedType)) {
+                errors.emplace_back(core::Error::Type::Semantic, defn->begin.source, defn->begin, defn->end, "assigned value doesn't match type of l-value.");
+            }
         }
 
         void Validator::validateIf(const std::shared_ptr<ASTIf> &ifStatement) {
@@ -240,8 +304,25 @@ namespace rtl {
         }
 
         void Validator::validateFor(const std::shared_ptr<ASTFor> &forStatement) {
-            forStatement->expr = validateExpression(std::reinterpret_pointer_cast<ASTExpression>(forStatement->expr));
+            validateRange(std::reinterpret_pointer_cast<ASTRange>(forStatement->expr));
             validateNode(forStatement->statement);
+        }
+
+        void Validator::validateRange(const std::shared_ptr<ASTRange> &range) {
+            range->lower = validateExpression(std::reinterpret_pointer_cast<ASTExpression>(range->lower));
+            range->upper = validateExpression(std::reinterpret_pointer_cast<ASTExpression>(range->upper));
+
+            auto isRangable = [](const std::shared_ptr<Type> &ty) {
+                return ty->decl->getTag() != TypeDeclaration::Tag::Bool && ty->decl->getTag() != TypeDeclaration::Tag::Structure && ty->decl->getTag() != TypeDeclaration::Tag::Union &&  ty->decl->getTag() != TypeDeclaration::Tag::Enumeration;
+            };
+
+            if (!isRangable(std::reinterpret_pointer_cast<ASTExpression>(range->lower)->evaluatedType)) {
+                errors.emplace_back(core::Error::Type::Semantic, range->lower->begin.source, range->lower->begin, range->lower->end, "value is not of rangable type.");
+            }
+
+            if (!isRangable(std::reinterpret_pointer_cast<ASTExpression>(range->upper)->evaluatedType)) {
+                errors.emplace_back(core::Error::Type::Semantic, range->upper->begin.source, range->upper->begin, range->upper->end, "value is not of rangable type.");
+            }
         }
 
         void Validator::validateWhile(const std::shared_ptr<ASTWhile> &whileStatement) {
@@ -257,13 +338,15 @@ namespace rtl {
 
         }
 
+        void Validator::validateReturn(const std::shared_ptr<ASTReturn> &returnStatement) {
+            returnStatement->expr = validateExpression(std::reinterpret_pointer_cast<ASTExpression>(returnStatement->expr));
+        }
+
         std::shared_ptr<ASTNode> Validator::validateExpression(const std::shared_ptr<ASTExpression> &expr) {
             auto result = expr;
 
             using Ty = ASTExpression::Type;
             if (expr->getExprType() == Ty::BinaryOperator) {
-                if (!expr->evaluatedType) typer->typeExpression(expr);
-
                 auto binop = std::reinterpret_pointer_cast<ASTBinaryOperator>(expr);
 
                 auto lhs = std::reinterpret_pointer_cast<ASTExpression>(binop->left);
@@ -302,8 +385,19 @@ namespace rtl {
 
                     return node;
                 } else {
-                    validateExpression(std::reinterpret_pointer_cast<ASTExpression>(binop->left));
-                    validateExpression(std::reinterpret_pointer_cast<ASTExpression>(binop->right));
+                    binop->left = validateExpression(std::reinterpret_pointer_cast<ASTExpression>(binop->left));
+                    binop->right = validateExpression(std::reinterpret_pointer_cast<ASTExpression>(binop->right));
+                }
+
+                if (!expr->evaluatedType) typer->typeExpression(expr);
+
+                if (binop->binopType == ASTBinaryOperator::Type::Assign) {
+                    auto lhs = binop->left;
+                    if (lhs->getType() != ASTType::VariableDeclaration) {
+                        errors.emplace_back(core::Error::Type::Semantic, lhs->begin.source, lhs->begin, lhs->end, "cannot assign to non-variable data");
+                    } else if (std::reinterpret_pointer_cast<ASTVariableDeclaration>(lhs)->flags & (std::uint32_t)ASTVariableDeclaration::Flags::Constant) {
+                        errors.emplace_back(core::Error::Type::Semantic, lhs->begin.source, lhs->begin, lhs->end, "cannot assign to constant data");
+                    }
                 }
 
                 if (!compareTypes(std::reinterpret_pointer_cast<ASTExpression>(binop->left)->evaluatedType, std::reinterpret_pointer_cast<ASTExpression>(binop->right)->evaluatedType)) {
@@ -314,15 +408,11 @@ namespace rtl {
 
                 bool found = false;
 
-                for (auto &arg : call->callArgs) {
-                    arg = validateExpression(std::reinterpret_pointer_cast<ASTExpression>(arg));
-                }
-
-                for (auto &node : nodes) {
+                auto compareNode = [&](const std::shared_ptr<ASTNode> &node) {
                     if (node->getType() == ASTType::FunctionHeader) {
                         auto function = std::reinterpret_pointer_cast<ASTFunctionHeader>(node);
 
-                        if (!function->rt.evaluatedType) { // This is a bit sketchy lol
+                        if (!function->prototype) {
                             validateFunction(function);
                         }
 
@@ -330,8 +420,9 @@ namespace rtl {
                             // Todo(Sean): Check for Variadic Arguments here eventually
                             bool failed = false;
                             if (call->callArgs.size() == function->paramDecls.size()) {
+
                                 for (std::size_t i = 0; i < call->callArgs.size(); i++) {
-                                    auto callArg = call->callArgs[i];
+                                    auto callArg = call->callArgs[i] = validateExpression(std::reinterpret_pointer_cast<ASTExpression>(call->callArgs[i]));
                                     auto paramDecl = function->paramDecls[i];
 
                                     std::shared_ptr<Type> callArgTy;
@@ -348,8 +439,8 @@ namespace rtl {
                                     }
 
                                     if (!compareTypes(callArgTy, paramDecl->targetTy.evaluatedType)) {
-                                        errors.emplace_back(core::Error::Type::Semantic, callArg->begin.source, callArg->begin, callArg->end, "argument type mismatch"); // Change this to expected '...', but received '...'
                                         failed = true;
+                                        break;
                                     }
                                 }
                             } else {
@@ -359,14 +450,107 @@ namespace rtl {
                             if (!failed) {
                                 call->called = function;
                                 found = true;
-                                break;
                             }
                         }
+                    } else if (node->getType() == ASTType::VariableDeclaration || node->getType() == ASTType::VariableDefinition) {
+                        std::shared_ptr<ASTVariableDeclaration> decl;
+
+                        if (node->getType() == ASTType::VariableDefinition) {
+                            decl = std::reinterpret_pointer_cast<ASTVariableDefinition>(node)->decl;
+                        } else {
+                            decl = std::reinterpret_pointer_cast<ASTVariableDeclaration>(node);
+                        }
+
+                        if (compareQualifiedNames(decl->name, call->called)) {
+                            if (!decl->targetTy.evaluatedType) validateNode(decl);
+                            call->called = decl;
+                            typer->typeNode(decl);
+
+                            if (decl->targetTy.evaluatedType->decl->getTag() != TypeDeclaration::Tag::FunctionPrototype) {
+                                throw core::Error(core::Error::Type::Semantic, call->begin.source, call->begin, call->end, fmt::format("attempt to call uncallable: '{}'.", unqualifyName(call->called)));
+                            }
+
+                            bool valargs = false;
+
+                            if (call->callArgs.size() != std::get<FunctionPrototype>(decl->targetTy.evaluatedType->decl->info).paramTypes.size()) {
+                                errors.emplace_back(core::Error::Type::Semantic, call->begin.source, call->begin, call->end, fmt::format("function prototype: '{}' expects {} arguments, but was given {}.", unqualifyName(std::reinterpret_pointer_cast<ASTVariableDeclaration>(call->called)->name), std::get<FunctionPrototype>(decl->targetTy.evaluatedType->decl->info).paramTypes.size(), call->callArgs.size()));
+
+                                valargs = true; // We validate the arguments here because there might be more arguments in the call than there are in the prototype declaration.
+
+                                for (auto &arg : call->callArgs) {
+                                    arg = validateExpression(std::reinterpret_pointer_cast<ASTExpression>(arg));
+                                }
+                            }
+
+                            auto count = std::min(call->callArgs.size(), std::get<FunctionPrototype>(decl->targetTy.evaluatedType->decl->info).paramTypes.size());
+                            for (std::size_t i = 0; i < count; i++) {
+                                if (!valargs) call->callArgs[i] = validateExpression(std::reinterpret_pointer_cast<ASTExpression>(call->callArgs[i]));
+                                auto callArg = call->callArgs[i];
+                                auto paramType = std::get<FunctionPrototype>(decl->targetTy.evaluatedType->decl->info).paramTypes[i];
+
+                                std::shared_ptr<Type> callArgTy;
+
+                                if (callArg->getType() == ASTType::Expression) {
+                                    callArgTy = std::reinterpret_pointer_cast<ASTExpression>(callArg)->evaluatedType;
+                                } else if (callArg->getType() == ASTType::VariableDeclaration) {
+                                    callArgTy = std::reinterpret_pointer_cast<ASTVariableDeclaration>(callArg)->targetTy.evaluatedType;
+                                } else if (callArg->getType() == ASTType::VariableDefinition) {
+                                    callArgTy = std::reinterpret_pointer_cast<ASTVariableDefinition>(callArg)->decl->targetTy.evaluatedType;
+                                } else {
+                                    errors.emplace_back(core::Error::Type::Semantic, callArg->begin.source, callArg->begin, callArg->end, "unsupported call param");
+                                    callArgTy = std::make_shared<Type>(builtinTypes->noneType, 0);
+                                }
+
+                                if (!compareTypes(callArgTy, paramType)) {
+                                    errors.emplace_back(core::Error::Type::Semantic, callArg->begin.source, callArg->begin, callArg->end, "argument type mismatch in function prototype invokation.");
+                                }
+                            }
+
+                            found = true;
+                        }
+                    }
+
+                    return found;
+                };
+
+                if (currentFunction) {
+                    for (auto &pd : currentFunction->paramDecls) {
+                        if (compareNode(pd)) break;
+                    }
+                }
+
+                if (!found && currentBlock) {
+                    auto lastStatement = currentStatement;
+                    for (auto block = currentBlock; block; block = currentBlock->parent) {
+                        for (auto &node : block->nodes) {
+                            currentStatement = node;
+                            if (compareNode(node)) break;
+                        }
+                    }
+                    currentStatement = lastStatement;
+                }
+
+                if (!found) {
+                    for (auto &node : nodes) {
+                        if (compareNode(node)) break;
                     }
                 }
 
                 if (!found) {
-                    throw core::Error(core::Error::Type::Semantic, call->begin.source, call->begin, call->end, fmt::format("no matching declaration to call of function '{}'.", unqualifyName(call->called)));
+                    std::shared_ptr<ASTNode> name;
+
+                    if (call->called->getType() == ASTType::FunctionHeader) {
+                        name = std::reinterpret_pointer_cast<ASTFunctionHeader>(call->called)->name;
+                    } else if (call->called->getType() == ASTType::VariableDeclaration) {
+                        name = std::reinterpret_pointer_cast<ASTFunctionHeader>(call->called)->name;
+                    } else if (call->called->getType() == ASTType::Expression) {
+                        auto expr = std::reinterpret_pointer_cast<ASTExpression>(call->called);
+                        if (expr->getExprType() == ASTExpression::Type::Literal) {
+                            name = std::reinterpret_pointer_cast<ASTLiteral>(expr);
+                        }
+                    }
+
+                    throw core::Error(core::Error::Type::Semantic, call->begin.source, call->begin, call->end, fmt::format("no matching declaration to call of '{}'.", unqualifyName(name)));
                 }
             } else if (expr->getExprType() == Ty::Literal) {
                 auto lit = std::reinterpret_pointer_cast<ASTLiteral>(expr);
@@ -424,6 +608,11 @@ namespace rtl {
                     break;
                 }
 
+                case Ty::Range: {
+                    validateRange(std::reinterpret_pointer_cast<ASTRange>(node));
+                    break;
+                }
+
                 case Ty::While: {
                     validateWhile(std::reinterpret_pointer_cast<ASTWhile>(node));
                     break;
@@ -436,6 +625,11 @@ namespace rtl {
 
                 case Ty::Break: {
                     validateBreak(std::reinterpret_pointer_cast<ASTBreak>(node));
+                    break;
+                }
+
+                case Ty::Return: {
+                    validateReturn(std::reinterpret_pointer_cast<ASTReturn>(node));
                     break;
                 }
 

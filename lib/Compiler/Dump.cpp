@@ -125,6 +125,21 @@ namespace rtl {
                         result += "f64";
                         break;
                     }
+
+                    case Bt::FunctionPrototype: {
+                        result += "(";
+
+                        bool first = true;
+                        for (auto &pty : builtinType->fpData.paramTypes) {
+                            if (first) first = false;
+                            else result += ", ";
+
+                            result += dumpType(pty);
+                        }
+
+                        result += ") -> ";
+                        result += dumpType(builtinType->fpData.rt);
+                    }
                 }
             } else if (ty.baseType->getType() == ASTType::Expression) {
                 result += dumpNode(ty.baseType);

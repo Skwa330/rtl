@@ -117,6 +117,14 @@ namespace rtl {
            return ASTType::Expression;
         }
 
+        ASTRef::ASTRef(const std::shared_ptr<ASTNode> &node) {
+            this->node = node;
+        }
+
+        ASTExpression::Type ASTRef::getExprType() const {
+            return ASTExpression::Type::Ref;
+        }
+
         ASTCall::ASTCall(const std::shared_ptr<ASTNode>& called, const std::vector<std::shared_ptr<ASTNode>>& callArgs) {
             this->called = called;
             this->callArgs = callArgs;

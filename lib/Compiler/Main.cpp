@@ -30,9 +30,9 @@ void displayUsage(const std::string &programName) {
         "Options:\n"
         "    -h, --help                      display this message and quit.\n"
         "    -c, --compile                   compile, but don't link.\n"
-        "    -o, --out    <filename>         set the output file name.\n"
+        "    -o, --out           <filename>  set the output file name.\n"
         "    -t, --triple-triple <triple>    set the target triple.\n"
-        "    -l, --link   <linkable>         link an external library in the output executable.\n"
+        "    -l, --link          <linkable>  link an external library in the output executable.\n"
     ;
 
     fmt::print(stderr, "{}", info);
@@ -202,7 +202,7 @@ int main(int argc, char **argv) {
         parser->parseSyntaxTree();
 
         for (auto &node : nodes) {
-            fmt::print("{}\n", rtl::compiler::dumpNode(node));
+            fmt::print("{}\n\n", rtl::compiler::dumpNode(node));
         }
 
         auto driver = std::make_shared<rtl::sema::Driver>(nodes, errors);
@@ -211,12 +211,22 @@ int main(int argc, char **argv) {
         for (auto &e : errors) {
             formatError(e, e.getSource()); // THIS WON'T USE THE RIGHT SOURCE.
         }
+
+        if (errors.size()) {
+            fmt::print(stderr, "\n\n{}: there were too many errors; we may not continue with compilation.\n", programName);
+            return -1;
+        }
     } catch (const rtl::core::Error &e) {
         for (auto &e : errors) {
             formatError(e, e.getSource());
         }
 
-        formatError(e, e.getSource());;
+        formatError(e, e.getSource());
+
+        if (errors.size()) {
+            fmt::print(stderr, "{}: there were too many errors; we may not continue with compilation.\n", programName);
+            return -1;
+        }
     } catch (const std::exception &e) {
         fmt::print(stderr, "{}\n", e.what());
     }

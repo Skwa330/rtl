@@ -22,8 +22,6 @@ namespace rtl {
 
             std::shared_ptr<parser::ASTFunctionHeader> currentFunction;
             std::shared_ptr<parser::ASTBlock> currentBlock;
-
-            void validateType(const parser::Type &type); // This throws an exception on fail as to avoid failure later on in validation.
         public:
             Typer(const std::shared_ptr<BuiltinTypes> &builtinTypes, std::vector<std::shared_ptr<parser::ASTNode>> &nodes, std::vector<core::Error> &errors);
 

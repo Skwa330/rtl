@@ -33,7 +33,7 @@ namespace rtl {
             Continue,
             Break,
             If,
-            Expression
+            Expression,
         };
 
         struct ASTNode {
@@ -42,6 +42,15 @@ namespace rtl {
             virtual ~ASTNode() = default;
 
             virtual ASTType getType() const = 0;
+        };
+
+        struct Type {
+            std::shared_ptr<ASTNode> baseType;
+            std::shared_ptr<sema::Type> evaluatedType;
+            std::uint32_t pointer;
+
+            Type() = default;
+            Type(const std::shared_ptr<ASTNode>& baseType, std::uint32_t pointer);
         };
 
         struct ASTBuiltinType : public ASTNode {
@@ -58,23 +67,20 @@ namespace rtl {
                 U32,
                 U64,
                 F32,
-                F64
+                F64,
+                FunctionPrototype
             };
 
             Type builtinType;
 
+            struct {
+                parser::Type rt;
+                std::vector<parser::Type> paramTypes;
+            } fpData; // Function-Prototype Type data
+
             ASTBuiltinType(Type builtinType);
 
             ASTType getType() const;
-        };
-
-        struct Type {
-            std::shared_ptr<ASTNode> baseType;
-            std::shared_ptr<sema::Type> evaluatedType;
-            std::uint32_t pointer;
-
-            Type() = default;
-            Type(const std::shared_ptr<ASTNode>& baseType, std::uint32_t pointer);
         };
 
         struct ASTVariableDeclaration : public ASTNode {
@@ -132,6 +138,7 @@ namespace rtl {
             std::shared_ptr<ASTFunctionBody> body;
             std::vector<std::shared_ptr<ASTVariableDeclaration>> paramDecls;
             Type rt;
+            std::shared_ptr<sema::Type> prototype; // Function Prototype
 
             std::uint32_t flags = 0;
 
@@ -199,6 +206,7 @@ namespace rtl {
 
         struct ASTExpression : public ASTNode {
             enum class Type {
+                Ref,
                 Call,
                 Subscript,
                 Literal,
@@ -212,6 +220,15 @@ namespace rtl {
             virtual Type getExprType() const = 0;
 
             ASTType getType() const;
+        };
+
+        // References another node (e.g., when passing a variable to a function call)
+        struct ASTRef : public ASTExpression {
+            std::shared_ptr<ASTNode> node;
+
+            ASTRef(const std::shared_ptr<ASTNode> &node);
+
+            Type getExprType() const;
         };
 
         struct ASTCall : public ASTExpression {

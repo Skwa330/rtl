@@ -1,2 +1,0 @@
-/usr/bin/ar qc librtlCompiler.a  CMakeFiles/rtlCompiler.dir/lib/Compiler/Dump.cpp.o
-/usr/bin/ranlib librtlCompiler.a

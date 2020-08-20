@@ -137,6 +137,26 @@ namespace rtl {
                 lexer->eat();
             } else if (matchName().second) {
                 baseType = parseName();
+            } else if (lexer->peek().type == TokenType::LeftParen) {
+                auto ebt = std::make_shared<ASTBuiltinType>(ASTBuiltinType::Type::FunctionPrototype);
+                ebt->begin = lexer->peek().begin;
+                lexer->eat(); // (
+
+                while (lexer->peek().type != TokenType::RightParen) {
+                    ebt->fpData.paramTypes.push_back(parseType());
+
+                    if (lexer->peek().type == TokenType::Comma) lexer->eat();
+                }
+
+                lexer->eat(2); // ) ->
+                ebt->fpData.rt = parseType();
+                ebt->end = lexer->peek().end;
+
+                if (pointer) {
+                    throw core::Error(core::Error::Type::Syntactic, lexer->source, ebt->begin, ebt->end, "pointer to function prototype is invalid.");
+                }
+
+                baseType = ebt;
             }
 
             return Type(baseType, pointer);
@@ -189,10 +209,41 @@ namespace rtl {
             } else if ((c = matchName(b + p)).second) {
                 p += c.first;
                 return MatchType(p, true);
+            } else if (lexer->peek(b + p).type == TokenType::LeftParen) {
+                ++p;
+
+                while (lexer->peek(b + p).type != TokenType::RightParen) {
+                    if (!(c = matchType(b + p)).second) {
+                        return MatchType(p + c.first, false);
+                    }
+                    p += c.first;
+
+                    if (lexer->peek(b + p).type != TokenType::Comma && lexer->peek(b + p).type != TokenType::RightParen) {
+                        error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected ',' or ')'.");
+                        return MatchType(p, false);
+                    }
+
+                    if (lexer->peek(b + p).type == TokenType::Comma) ++p;
+                }
+
+                ++p;
+
+                if (lexer->peek(b + p).type != TokenType::Arrow) {
+                    error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected '->'.");
+                    return MatchType(p, false);
+                }
+                ++p;
+
+                if (!(c = matchType(b + p)).second) {
+                    return MatchType(p + c.first, false);
+                }
+                p += c.first;
             } else {
                 error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{}'", lexer->peek(b + p).text));
                 return MatchType(p, false);
             }
+
+            return MatchType(p, true);
         }
 
         std::shared_ptr<ASTVariableDeclaration> Parser::parseVariableDeclaration() {
@@ -825,6 +876,8 @@ namespace rtl {
                 auto type = parseType();
 
                 auto decl = std::make_shared<ASTVariableDeclaration>(name, type);
+                decl->begin = name->begin;
+                decl->end = type.baseType->end;
                 decl->flags = flags;
 
                 paramDecls.push_back(decl);

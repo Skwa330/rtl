@@ -1,8 +1,0 @@
-/rtl/build/lin/CMakeFiles/edit_cache.dir
-/rtl/build/lin/CMakeFiles/rebuild_cache.dir
-/rtl/build/lin/CMakeFiles/rtlSema.dir
-/rtl/build/lin/CMakeFiles/rtl.dir
-/rtl/build/lin/CMakeFiles/rtlParser.dir
-/rtl/build/lin/CMakeFiles/rtlCore.dir
-/rtl/build/lin/CMakeFiles/rtlCompiler.dir
-/rtl/build/lin/CMakeFiles/ya_getopt.dir

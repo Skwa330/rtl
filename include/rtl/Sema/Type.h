@@ -5,8 +5,16 @@
 
 namespace rtl {
     namespace sema {
+        class Type;
+        struct FunctionPrototype {
+            std::shared_ptr<Type> rt;
+            std::vector<std::shared_ptr<Type>> paramTypes;
+        };
+
         class TypeDeclaration {
         public:
+            using InfoType = std::variant<FunctionPrototype>;//, parser::ASTStructureDescription, parser::ASTEnumerationDescription> // A UNION SHOULD JUST BE A STRUCT WITH A 'UNION' FLAG SET.
+
             enum class Tag {
                 None,
                 Bool,
@@ -21,14 +29,17 @@ namespace rtl {
                 F32,
                 F64,
 
+                FunctionPrototype,
+
                 Structure,
                 Enumeration,
                 Union
             };
         private:
             Tag tag;
-            // Add std::variant<parser::ASTStructureDescription, parser::ASTEnumerationDescription> // A UNION SHOULD JUST BE A STRUCT WITH A 'UNION' FLAG SET.
         public:
+            InfoType info;
+
             TypeDeclaration(Tag tag);
 
             Tag getTag() const;

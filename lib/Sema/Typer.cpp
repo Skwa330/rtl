@@ -9,12 +9,12 @@ namespace rtl {
         Typer::Typer(const std::shared_ptr<BuiltinTypes> &builtinTypes, std::vector<std::shared_ptr<ASTNode>> &nodes, std::vector<core::Error> &errors) : builtinTypes(builtinTypes), nodes(nodes), errors(errors) {
         }
 
-        std::shared_ptr<TypeDeclaration> Typer::getTypeDeclaration(const std::shared_ptr<ASTNode> &identifier) {
-            if (identifier->getType() != ASTType::BuiltinType) {
-                throw std::domain_error(fmt::format("{}:{}:{}: custom types are not yet supported :(", identifier->begin.moduleName, identifier->begin.line, identifier->begin.lexpos));
+        std::shared_ptr<TypeDeclaration> Typer::getTypeDeclaration(const std::shared_ptr<ASTNode> &typeIdentifier) {
+            if (typeIdentifier->getType() != ASTType::BuiltinType) {
+                throw std::domain_error(fmt::format("{}:{}:{}: custom types are not yet supported :(", typeIdentifier->begin.moduleName, typeIdentifier->begin.line, typeIdentifier->begin.lexpos));
             }
 
-            auto builtin = std::reinterpret_pointer_cast<ASTBuiltinType>(identifier);
+            auto builtin = std::reinterpret_pointer_cast<ASTBuiltinType>(typeIdentifier);
 
             using Ty = ASTBuiltinType::Type;
 
@@ -66,6 +66,22 @@ namespace rtl {
                 case Ty::F64: {
                     return builtinTypes->f64Type;
                 }
+
+                case Ty::FunctionPrototype: {
+                    auto decl = std::make_shared<TypeDeclaration>(TypeDeclaration::Tag::FunctionPrototype);
+
+                    typeType(builtin->fpData.rt);
+                    std::get<FunctionPrototype>(decl->info).rt = builtin->fpData.rt.evaluatedType;
+
+                    std::get<FunctionPrototype>(decl->info).paramTypes.reserve(builtin->fpData.paramTypes.size());
+
+                    for (auto &pty : builtin->fpData.paramTypes) {
+                        typeType(pty);
+                        std::get<FunctionPrototype>(decl->info).paramTypes.push_back(pty.evaluatedType);
+                    }
+
+                    return decl;
+                }
             }
 
             return {};
@@ -86,6 +102,17 @@ namespace rtl {
 
             function->rt.evaluatedType = mapType(function->rt);
 
+            // Create prototype
+            function->prototype = std::make_shared<Type>(std::make_shared<TypeDeclaration>(TypeDeclaration::Tag::FunctionPrototype), 0);
+
+            std::get<FunctionPrototype>(function->prototype->decl->info).rt = function->rt.evaluatedType;
+
+            std::get<FunctionPrototype>(function->prototype->decl->info).paramTypes.reserve(function->paramDecls.size());
+
+            for (auto &pd : function->paramDecls) {
+                std::get<FunctionPrototype>(function->prototype->decl->info).paramTypes.push_back(pd->targetTy.evaluatedType);
+            }
+
             currentFunction = lastFunction;
         }
 
@@ -96,6 +123,10 @@ namespace rtl {
         void Typer::typeVariableDefinition(const std::shared_ptr<ASTVariableDefinition> &defn) {
             typeVariableDeclaration(defn->decl);
             typeExpression(std::reinterpret_pointer_cast<ASTExpression>(defn->expr));
+
+            if (defn->decl->targetTy.baseType->getType() == ASTType::BuiltinType && std::reinterpret_pointer_cast<ASTBuiltinType>(defn->decl->targetTy.baseType)->builtinType == ASTBuiltinType::Type::Auto) {
+                defn->decl->targetTy.evaluatedType = std::reinterpret_pointer_cast<ASTExpression>(defn->expr)->evaluatedType;
+            }
 
             if (!defn->decl->targetTy.evaluatedType->decl) {
                 if (defn->expr->getType() != ASTType::Expression) {
@@ -108,6 +139,8 @@ namespace rtl {
 
         void Typer::typeExpression(const std::shared_ptr<ASTExpression> &expr) {
             using Ty = ASTExpression::Type;
+
+            if (expr->evaluatedType) return;
 
             switch (expr->getExprType()) {
                 case Ty::Literal: {
@@ -179,7 +212,20 @@ namespace rtl {
 
                 case Ty::Call: {
                     auto call = std::reinterpret_pointer_cast<ASTCall>(expr);
-                    call->evaluatedType = (std::reinterpret_pointer_cast<ASTFunctionHeader>(call->called))->rt.evaluatedType;
+                    if (call->called->getType() == ASTType::FunctionHeader) {
+                        call->evaluatedType = (std::reinterpret_pointer_cast<ASTFunctionHeader>(call->called))->rt.evaluatedType;
+                    } else if (call->called->getType() == ASTType::VariableDeclaration) {
+                        call->evaluatedType = std::get<FunctionPrototype>((std::reinterpret_pointer_cast<ASTVariableDeclaration>(call->called)->targetTy.evaluatedType->decl->info)).rt;
+                    } else {
+                        #ifndef STRINGIFY
+                        #define STRINGIFY(x) STR(x)
+                        #define STR(x) #x
+                        #endif
+
+                        throw std::domain_error("unimplemented callable in Ty::Call at " __FILE__ ":" STRINGIFY(__LINE__));
+                    }
+
+                    break;
                 }
             }
         }
@@ -189,10 +235,20 @@ namespace rtl {
         }
 
         void Typer::typeNode(const std::shared_ptr<ASTNode> &node) {
+            // Todo(Sean): Check if nodes are typed so that we aren't constantly re-typing them.
+            auto type = node->getType();
+
             if (node->getType() == ASTType::FunctionHeader) {
                 typeFunction(std::reinterpret_pointer_cast<ASTFunctionHeader>(node));
             } else if (node->getType() == ASTType::Expression) {
                 typeExpression(std::reinterpret_pointer_cast<ASTExpression>(node));
+            } else if (node->getType() == ASTType::VariableDeclaration) {
+                typeVariableDeclaration(std::reinterpret_pointer_cast<ASTVariableDeclaration>(node));
+            } else if (node->getType() == ASTType::VariableDefinition) {
+                typeVariableDefinition(std::reinterpret_pointer_cast<ASTVariableDefinition>(node));
+            } else if (node->getType() == ASTType::Return) {
+                auto returnStatement = std::reinterpret_pointer_cast<ASTReturn>(node);
+                typeExpression(std::reinterpret_pointer_cast<ASTExpression>(returnStatement->expr));
             } else {
                 throw std::runtime_error("Unhandled typeNode call");
             }
