@@ -197,6 +197,7 @@ int main(int argc, char **argv) {
     auto parser = std::make_shared<rtl::parser::Parser>(nodes);
     parser->initFromFile(inputFiles[0]);
 
+    std::vector<rtl::core::Error> errors;
     try {
         parser->parseSyntaxTree();
 
@@ -204,15 +205,18 @@ int main(int argc, char **argv) {
             fmt::print("{}\n", rtl::compiler::dumpNode(node));
         }
 
-        std::vector<rtl::core::Error> errors;
         auto driver = std::make_shared<rtl::sema::Driver>(nodes, errors);
         driver->run();
 
         for (auto &e : errors) {
-            formatError(e, parser->getLexer()->source); // THIS WON'T USE THE RIGHT SOURCE.
+            formatError(e, e.getSource()); // THIS WON'T USE THE RIGHT SOURCE.
         }
     } catch (const rtl::core::Error &e) {
-        formatError(e, parser->getLexer()->source);
+        for (auto &e : errors) {
+            formatError(e, e.getSource());
+        }
+
+        formatError(e, e.getSource());;
     } catch (const std::exception &e) {
         fmt::print(stderr, "{}\n", e.what());
     }

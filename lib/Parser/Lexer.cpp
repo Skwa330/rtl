@@ -53,7 +53,7 @@ namespace rtl {
                     }
 
                     if (balance) {
-                        throw core::Error(core::Error::Type::Lexical, location, sourceLocation,  "unterminated comment.");
+                        throw core::Error(core::Error::Type::Lexical, source, location, sourceLocation,  "unterminated comment.");
                     }
 
                     continue;
@@ -382,7 +382,7 @@ namespace rtl {
                                         core::SourceLocation begin = sourceLocation;
                                         next();
                                         if (sourceLocation.pointer + 1 >= source.size()) {
-                                            throw core::Error(core::Error::Type::Lexical, begin, sourceLocation, "\\x must be followed by exactly two hex digits.");
+                                            throw core::Error(core::Error::Type::Lexical, source, begin, sourceLocation, "\\x must be followed by exactly two hex digits.");
                                         }
 
                                         std::uint8_t hex = 0;
@@ -394,7 +394,7 @@ namespace rtl {
                                             } else if (source[sourceLocation.pointer] >= '0' && source[sourceLocation.pointer] <= '9') {
                                                 hex += source[sourceLocation.pointer] - '0';
                                             } else {
-                                                throw core::Error(core::Error::Type::Lexical, begin, sourceLocation, fmt::format("invalid hex digit '{}'.", source[sourceLocation.pointer]));
+                                                throw core::Error(core::Error::Type::Lexical, source, begin, sourceLocation, fmt::format("invalid hex digit '{}'.", source[sourceLocation.pointer]));
                                             }
 
                                             next();
@@ -408,7 +408,7 @@ namespace rtl {
                                         core::SourceLocation begin = sourceLocation;
                                         next();
                                         if (sourceLocation.pointer + 1 >= source.size()) {
-                                            throw core::Error(core::Error::Type::Lexical, begin, sourceLocation, "\\u must be followed by exactly four hex digits.");
+                                            throw core::Error(core::Error::Type::Lexical, source, begin, sourceLocation, "\\u must be followed by exactly four hex digits.");
                                         }
 
                                         std::uint16_t hex = 0;
@@ -420,7 +420,7 @@ namespace rtl {
                                             } else if (source[sourceLocation.pointer] >= '0' && source[sourceLocation.pointer] <= '9') {
                                                 hex += source[sourceLocation.pointer] - '0';
                                             } else {
-                                                throw core::Error(core::Error::Type::Lexical, begin, sourceLocation, fmt::format("invalid hex digit '{}'.", source[sourceLocation.pointer]));
+                                                throw core::Error(core::Error::Type::Lexical, source, begin, sourceLocation, fmt::format("invalid hex digit '{}'.", source[sourceLocation.pointer]));
                                             }
 
                                             next();
@@ -435,7 +435,7 @@ namespace rtl {
                                         core::SourceLocation begin = sourceLocation;
                                         next();
                                         if (sourceLocation.pointer + 1 >= source.size()) {
-                                            throw core::Error(core::Error::Type::Lexical, begin, sourceLocation, "\\U must be followed by exactly eight hex digits.");
+                                            throw core::Error(core::Error::Type::Lexical, source, begin, sourceLocation, "\\U must be followed by exactly eight hex digits.");
                                         }
 
                                         std::uint32_t hex = 0;
@@ -447,7 +447,7 @@ namespace rtl {
                                             } else if (source[sourceLocation.pointer] >= '0' && source[sourceLocation.pointer] <= '9') {
                                                 hex += source[sourceLocation.pointer] - '0';
                                             } else {
-                                                throw core::Error(core::Error::Type::Lexical, begin, sourceLocation, fmt::format("invalid hex digit '{}'.", source[sourceLocation.pointer]));
+                                                throw core::Error(core::Error::Type::Lexical, source, begin, sourceLocation, fmt::format("invalid hex digit '{}'.", source[sourceLocation.pointer]));
                                             }
 
                                             next();
@@ -472,7 +472,7 @@ namespace rtl {
                         }
 
                         if (sourceLocation.pointer >= source.size() || source[sourceLocation.pointer] != delim) {
-                            throw core::Error(core::Error::Type::Lexical, location, sourceLocation, "unterminated literal.");
+                            throw core::Error(core::Error::Type::Lexical, source, location, sourceLocation, "unterminated literal.");
                         }
 
                         next();
@@ -666,7 +666,7 @@ namespace rtl {
                             break;
                         }
                     } else {
-                        throw core::Error(core::Error::Type::Lexical, sourceLocation, sourceLocation, "invalid token");
+                        throw core::Error(core::Error::Type::Lexical, source, sourceLocation, sourceLocation, "invalid token");
                         break;
                     }
                 }
@@ -688,6 +688,7 @@ namespace rtl {
         void Lexer::initFromSource(const std::string &moduleName, const std::string &source) {
             this->source = source;
 
+            sourceLocation.source = this->source;
             sourceLocation.moduleName = moduleName;
             sourceLocation.line = 1;
             sourceLocation.lexpos = 1;

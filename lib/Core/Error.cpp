@@ -2,8 +2,10 @@
 
 namespace rtl {
     namespace core {
-        Error::Error(Type type, const SourceLocation &begin, const SourceLocation &end, const std::string_view &message) {
+        Error::Error(Type type, const std::string_view &source, const SourceLocation &begin, const SourceLocation &end, const std::string_view &message) {
             this->type = type;
+
+            this->source = source;
 
             this->begin = begin;
             this->end = end;
@@ -13,6 +15,10 @@ namespace rtl {
 
         Error::Type Error::getType() const {
             return type;
+        }
+
+        const std::string_view &Error::getSource() const {
+            return source;
         }
 
         const SourceLocation &Error::getBegin() const {

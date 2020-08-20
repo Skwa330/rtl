@@ -18,10 +18,7 @@ namespace rtl {
     }
 
     namespace parser {
-        // During the validation state of semantic analysis, values of nodes will be reassigned based on the value they contain (e.g., the name of a variable will get translated to a pointer to its declaration).
-        // This is why nodes are represented as structs rather than classes. We need to be able to modify EVERYTHING about the AST during semantic analysis.
-        // This is also why most things are generic (e.g., std::shared_ptr<ASTNode> instead of an expression subclass).
-
+        // VariableReference, and FunctionReference aren't used by the parser; they are for translating names -> declarations (e.g., name(println) -> funref(fundecl(println)))
         enum class ASTType {
             BuiltinType,
             VariableDeclaration,
@@ -207,7 +204,7 @@ namespace rtl {
                 Literal,
                 Conversion,
                 UnaryOperator,
-                BinaryOperator
+                BinaryOperator,
             };
 
             std::shared_ptr<sema::Type> evaluatedType;

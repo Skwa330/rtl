@@ -8,6 +8,7 @@
 namespace rtl {
     namespace core {
         struct SourceLocation {
+            std::string_view source;
             std::string_view moduleName;
             std::size_t pointer;
             std::uint32_t line, lexpos;

@@ -67,7 +67,7 @@ namespace rtl {
         Type Parser::parseType() {
             if (!matchType().second) throw error;
 
-            std::size_t pointer = 0;
+            std::uint32_t pointer = 0;
             while (lexer->peek().type == TokenType::BitXor) {
                 lexer->eat();
                 ++pointer;
@@ -190,7 +190,7 @@ namespace rtl {
                 p += c.first;
                 return MatchType(p, true);
             } else {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{}'", lexer->peek(b + p).text));
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{}'", lexer->peek(b + p).text));
                 return MatchType(p, false);
             }
         }
@@ -234,18 +234,18 @@ namespace rtl {
             } else if (lexer->peek(b + p).type == TokenType::KwVar) {
                 ++p;
             } else {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));;
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));;
                 return MatchType(p, false);
             }
 
             if (lexer->peek(b + p).type != TokenType::Name) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected identifier.");
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected identifier.");
                 return MatchType(p, false);
             }
             ++p;
 
             if (lexer->peek(b + p).type != TokenType::Colon) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected ':'.");
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected ':'.");
                 return MatchType(p, false);
             }
             ++p;
@@ -313,12 +313,12 @@ namespace rtl {
             } else if (lexer->peek(b + p).type == TokenType::KwVar) {
                 ++p;
             } else {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
                 return MatchType(p, false);
             }
 
             if (lexer->peek(b + p).type != TokenType::Name) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected identifier.");
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected identifier.");
                 return MatchType(p, false);
             }
             ++p;
@@ -333,7 +333,7 @@ namespace rtl {
             }
 
             if (lexer->peek(b + p).type != TokenType::Equal) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected '='.");
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected '='.");
                 return MatchType(p, false);
             }
             ++p;
@@ -474,7 +474,7 @@ namespace rtl {
             MatchType c;
 
             if (lexer->peek(b + p).type != TokenType::LeftBrace) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
                 return MatchType(p, false);
             }
             ++p;
@@ -488,7 +488,7 @@ namespace rtl {
             }
 
             if (lexer->peek(b + p).type != TokenType::RightBrace) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
                 return MatchType(p, false);
             }
             ++p;
@@ -519,7 +519,7 @@ namespace rtl {
             MatchType c;
 
             if (lexer->peek(b + p).type != TokenType::KwReturn) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
                 return MatchType(p, false);
             }
             ++p;
@@ -550,7 +550,7 @@ namespace rtl {
             MatchType c;
 
             if (lexer->peek(b + p).type != TokenType::KwBreak) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
                 return MatchType(p, false);
             }
             ++p;
@@ -575,7 +575,7 @@ namespace rtl {
             MatchType c;
 
             if (lexer->peek(b + p).type != TokenType::KwContinue) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
                 return MatchType(p, false);
             }
             ++p;
@@ -602,7 +602,7 @@ namespace rtl {
             MatchType c;
 
             if (lexer->peek(b + p).type != TokenType::KwFor) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
                 return MatchType(p, false);
             }
             ++p;
@@ -644,7 +644,7 @@ namespace rtl {
             p += c.first;
 
             if (lexer->peek(b + p).type != TokenType::DotDot) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected '..'.");
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected '..'.");
                 return MatchType(p, false);
             }
             ++p;
@@ -682,7 +682,7 @@ namespace rtl {
             MatchType c;
 
             if (lexer->peek(b + p).type != TokenType::KwWhile) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected: '{:.{}}'", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected: '{:.{}}'", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
                 return MatchType(p + c.first, false);
             }
             ++p;
@@ -744,7 +744,7 @@ namespace rtl {
             MatchType c;
 
             if (lexer->peek(b + p).type != TokenType::KwIf) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected 'if'.");
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected 'if'.");
                 return MatchType(p, false);
             }
             ++p;
@@ -855,7 +855,7 @@ namespace rtl {
                     } else if (name->getString() == "fastcall") {
                         flags |= (std::uint32_t)ASTFunctionHeader::Flags::FastCall;
                     } else {
-                        throw core::Error(core::Error::Type::Syntactic, name->begin, name->end, fmt::format("invalid hint '{}'.", name->getString()));
+                        throw core::Error(core::Error::Type::Syntactic, lexer->source, name->begin, name->end, fmt::format("invalid hint '{}'.", name->getString()));
                     }
                 }
 
@@ -896,7 +896,7 @@ namespace rtl {
             }
 
             if (lexer->peek(b + p).type != TokenType::KwFun) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
                 return MatchType(p, false);
             }
             ++p;
@@ -907,7 +907,7 @@ namespace rtl {
             p += c.first;
 
             if (lexer->peek(b + p).type != TokenType::LeftParen) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected '('.");
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected '('.");
                 return MatchType(p, false);
             }
             ++p;
@@ -918,13 +918,13 @@ namespace rtl {
                 }
 
                 if (lexer->peek(b + p).type != TokenType::Name) {
-                    error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected identifier.");
+                    error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected identifier.");
                     return MatchType(p, false);
                 }
                 ++p;
 
                 if (lexer->peek(b + p).type != TokenType::Colon) {
-                    error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected ':'.");
+                    error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected ':'.");
                     return MatchType(p, false);
                 }
                 ++p;
@@ -935,7 +935,7 @@ namespace rtl {
                 p += c.first;
 
                 if (lexer->peek(b + p).type != TokenType::Comma && lexer->peek(b + p).type != TokenType::RightParen) {
-                    error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected ',' or ')'.");
+                    error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected ',' or ')'.");
                     return MatchType(p, false);
                 }
 
@@ -951,14 +951,14 @@ namespace rtl {
                     ++p;
 
                     if (lexer->peek(b + p).type != TokenType::Name) {
-                        error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected identifier.");
+                        error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected identifier.");
                         return MatchType(p, false);
                     }
                     ++p;
                 }
 
                 if (lexer->peek(b + p).type != TokenType::RightBracket) {
-                    error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected ']'.");
+                    error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected ']'.");
                     return MatchType(p, false);
                 }
                 ++p;
@@ -1669,7 +1669,7 @@ namespace rtl {
                         p += c.first;
 
                         if (lexer->peek(b + p).type != TokenType::Comma && lexer->peek(b + p).type != TokenType::RightParen) {
-                            error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected ',' or ')'.");
+                            error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected ',' or ')'.");
                             return MatchType(p, false);
                         }
 
@@ -1687,7 +1687,7 @@ namespace rtl {
                     p += c.first;
 
                     if (lexer->peek(b + p).type != TokenType::RightBracket) {
-                        error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected ']'.");
+                        error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected ']'.");
                         return MatchType(p, false);
                     }
 
@@ -1696,7 +1696,7 @@ namespace rtl {
                     ++p;
 
                     if (lexer->peek(b + p).type != TokenType::Name) {
-                        error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected identifier.");
+                        error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected identifier.");
                         return MatchType(p, false);
                     }
 
@@ -1722,7 +1722,7 @@ namespace rtl {
                 return MatchType(++p, true);
             } else if (lexer->peek(b + p).type == TokenType::Character) {
                 if (lexer->peek(b + p).text.size() > 1) {
-                    error = core::Error(core::Error::Type::Syntactic, lexer->peek().begin, lexer->peek().end, "invalid character literal.");
+                    error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek().begin, lexer->peek().end, "invalid character literal.");
                     return MatchType(p, false);
                 }
 
@@ -1732,7 +1732,7 @@ namespace rtl {
             } else if (lexer->peek(b + p).type == TokenType::Name) {
                 return matchName(b + p);
             } else {
-                error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{:.{}}'.", lexer->peek(b + p).text.data(), lexer->peek(b + p).text.size()));
                 return MatchType(p, false);
             }
         }
@@ -1746,7 +1746,7 @@ namespace rtl {
                 ++p;
 
                 if (lexer->peek(b + p).type != TokenType::Name) {
-                    error = core::Error(core::Error::Type::Syntactic, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected identifier.");
+                    error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected identifier.");
                     return MatchType(p, false);
                 }
 

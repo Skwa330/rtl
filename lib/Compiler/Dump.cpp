@@ -335,8 +335,9 @@ namespace rtl {
                 } else if (expr->getExprType() == ASTExpression::Type::Conversion) {
                     auto conversion = std::reinterpret_pointer_cast<ASTConversion>(node);
 
+                    result += "(";
                     result += dumpNode(conversion->from);
-                    result += " as (";
+                    result += " as ";
 
                     for (std::size_t i = 0; i < conversion->to.pointer; i++) {
                         result += "^";

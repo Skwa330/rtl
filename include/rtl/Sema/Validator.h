@@ -27,6 +27,8 @@ namespace rtl {
 
             bool isImplicitlyConvertible(const std::shared_ptr<Type> &left, const std::shared_ptr<Type> &right);
             bool compareTypes(const std::shared_ptr<Type> &left, const std::shared_ptr<Type> &right);
+
+            std::shared_ptr<parser::ASTNode> findQualified(const std::shared_ptr<parser::ASTNode> &qlf);
         public:
             Validator(std::shared_ptr<BuiltinTypes> builtinTypes, std::vector<std::shared_ptr<parser::ASTNode>> &nodes, std::vector<core::Error> &errors);
 
@@ -36,7 +38,17 @@ namespace rtl {
             void validateVariableDeclaration(const std::shared_ptr<parser::ASTVariableDeclaration> &decl);
             void validateVariableDefinition(const std::shared_ptr<parser::ASTVariableDefinition> &defn);
 
-            void validateExpression(std::shared_ptr<parser::ASTExpression> &expr);
+            void validateIf(const std::shared_ptr<parser::ASTIf> &ifStatement);
+
+            void validateFor(const std::shared_ptr<parser::ASTFor> &forStatement);
+            void validateWhile(const std::shared_ptr<parser::ASTWhile> &whileStatement);
+
+            void validateContinue(const std::shared_ptr<parser::ASTContinue> &continueStatement);
+            void validateBreak(const std::shared_ptr<parser::ASTBreak> &breakStatement);
+
+            std::shared_ptr<parser::ASTNode> validateExpression(const std::shared_ptr<parser::ASTExpression> &expr);
+
+            void validateNode(const std::shared_ptr<parser::ASTNode> &node);
 
             void validate();
         };

@@ -20,14 +20,17 @@ namespace rtl {
         private:
             Type type;
 
+            std::string_view source;
             SourceLocation begin, end;
 
             std::string message;
         public:
             Error() = default;
-            Error(Type type, const SourceLocation &begin, const SourceLocation &end, const std::string_view &message);
+            Error(Type type, const std::string_view &source, const SourceLocation &begin, const SourceLocation &end, const std::string_view &message);
 
             Type getType() const;
+
+            const std::string_view &getSource() const;
 
             const SourceLocation &getBegin() const;
             const SourceLocation &getEnd() const;

@@ -153,6 +153,9 @@ namespace rtl {
 
                     typeExpression(std::reinterpret_pointer_cast<ASTExpression>(conversion->from));
                     typeType(conversion->to);
+                    conversion->evaluatedType = conversion->to.evaluatedType;
+
+                    break;
                 }
 
                 case Ty::UnaryOperator: {
