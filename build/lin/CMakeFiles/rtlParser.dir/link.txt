@@ -1,0 +1,2 @@
+/usr/bin/ar qc librtlParser.a  CMakeFiles/rtlParser.dir/lib/Parser/AST.cpp.o CMakeFiles/rtlParser.dir/lib/Parser/Lexer.cpp.o CMakeFiles/rtlParser.dir/lib/Parser/Parser.cpp.o
+/usr/bin/ranlib librtlParser.a

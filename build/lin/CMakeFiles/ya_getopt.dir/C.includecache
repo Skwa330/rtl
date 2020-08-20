@@ -1,0 +1,22 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/rtl/deps/ya_getopt/ya_getopt.c
+stdio.h
+-
+stdarg.h
+-
+stdlib.h
+-
+string.h
+-
+ya_getopt.h
+/rtl/deps/ya_getopt/ya_getopt.h
+
+/rtl/deps/ya_getopt/ya_getopt.h
+

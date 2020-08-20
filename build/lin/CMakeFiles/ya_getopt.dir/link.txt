@@ -1,0 +1,2 @@
+/usr/bin/ar qc libya_getopt.a  CMakeFiles/ya_getopt.dir/deps/ya_getopt/ya_getopt.c.o
+/usr/bin/ranlib libya_getopt.a

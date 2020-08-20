@@ -1,0 +1,2 @@
+/usr/bin/ar qc librtlSema.a  CMakeFiles/rtlSema.dir/lib/Sema/Driver.cpp.o CMakeFiles/rtlSema.dir/lib/Sema/Type.cpp.o CMakeFiles/rtlSema.dir/lib/Sema/Typer.cpp.o CMakeFiles/rtlSema.dir/lib/Sema/Validator.cpp.o
+/usr/bin/ranlib librtlSema.a
