@@ -464,7 +464,6 @@ namespace rtl {
                         if (compareQualifiedNames(decl->name, call->called)) {
                             if (!decl->targetTy.evaluatedType) validateNode(decl);
                             call->called = decl;
-                            typer->typeNode(decl);
 
                             if (decl->targetTy.evaluatedType->decl->getTag() != TypeDeclaration::Tag::FunctionPrototype) {
                                 throw core::Error(core::Error::Type::Semantic, call->begin.source, call->begin, call->end, fmt::format("attempt to call uncallable: '{}'.", unqualifyName(call->called)));
@@ -473,7 +472,7 @@ namespace rtl {
                             bool valargs = false;
 
                             if (call->callArgs.size() != std::get<FunctionPrototype>(decl->targetTy.evaluatedType->decl->info).paramTypes.size()) {
-                                errors.emplace_back(core::Error::Type::Semantic, call->begin.source, call->begin, call->end, fmt::format("function prototype: '{}' expects {} arguments, but was given {}.", unqualifyName(std::reinterpret_pointer_cast<ASTVariableDeclaration>(call->called)->name), std::get<FunctionPrototype>(decl->targetTy.evaluatedType->decl->info).paramTypes.size(), call->callArgs.size()));
+                                errors.emplace_back(core::Error::Type::Semantic, call->begin.source, call->begin, call->end, fmt::format("function prototype: '{}' expects {} argument{}, but was given {}.", unqualifyName(std::reinterpret_pointer_cast<ASTVariableDeclaration>(call->called)->name), std::get<FunctionPrototype>(decl->targetTy.evaluatedType->decl->info).paramTypes.size(), std::get<FunctionPrototype>(decl->targetTy.evaluatedType->decl->info).paramTypes.size() > 1 ? "s" : "", call->callArgs.size()));
 
                                 valargs = true; // We validate the arguments here because there might be more arguments in the call than there are in the prototype declaration.
 

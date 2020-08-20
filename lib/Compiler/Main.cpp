@@ -224,7 +224,7 @@ int main(int argc, char **argv) {
         formatError(e, e.getSource());
 
         if (errors.size()) {
-            fmt::print(stderr, "{}: there were too many errors; we may not continue with compilation.\n", programName);
+            fmt::print(stderr, "{}: there were errors; we may not continue with compilation.\n", programName);
             return -1;
         }
     } catch (const std::exception &e) {
