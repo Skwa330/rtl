@@ -405,13 +405,13 @@ namespace rtl {
                             } else if (node->getType() == ASTType::VariableDefinition && (std::reinterpret_pointer_cast<ASTVariableDefinition>(node)->decl->flags & (std::uint32_t)ASTVariableDeclaration::Flags::Constant)) {
                                 errors.emplace_back(core::Error::Type::Semantic, binop->begin.source, binop->begin, binop->end, "cannot assign to constant data.");
                             } else {
-                                errors.emplace_back(core::Error::Type::Semantic, node->begin.source, node->begin, node->end, "left-hand operand must be a valid l-value.");
+                                errors.emplace_back(core::Error::Type::Semantic, binop->begin.source, binop->begin, binop->end, "left-hand operand must be a valid l-value.");
                             }
                         } else {
-                            errors.emplace_back(core::Error::Type::Semantic, lhs->begin.source, lhs->begin, lhs->end, "left-hand operand must be a valid l-value.");
+                            errors.emplace_back(core::Error::Type::Semantic, binop->begin.source, binop->begin, binop->end, "left-hand operand must be a valid l-value.");
                         }
                     } else {
-                        errors.emplace_back(core::Error::Type::Semantic, lhs->begin.source, lhs->begin, lhs->end, "left-hand operand must be a valid l-value.");
+                        errors.emplace_back(core::Error::Type::Semantic, binop->begin.source, binop->begin, binop->end, "left-hand operand must be a valid l-value.");
                     }
 
                 }
