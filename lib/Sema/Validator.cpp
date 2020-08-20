@@ -393,11 +393,27 @@ namespace rtl {
 
                 if (binop->binopType == ASTBinaryOperator::Type::Assign) {
                     auto lhs = binop->left;
-                    if (lhs->getType() != ASTType::VariableDeclaration) {
-                        errors.emplace_back(core::Error::Type::Semantic, lhs->begin.source, lhs->begin, lhs->end, "cannot assign to non-variable data");
-                    } else if (std::reinterpret_pointer_cast<ASTVariableDeclaration>(lhs)->flags & (std::uint32_t)ASTVariableDeclaration::Flags::Constant) {
-                        errors.emplace_back(core::Error::Type::Semantic, lhs->begin.source, lhs->begin, lhs->end, "cannot assign to constant data");
+                    if (lhs->getType() == ASTType::Expression) {
+                        auto expr = std::reinterpret_pointer_cast<ASTExpression>(lhs);
+
+                        if (expr->getExprType() == ASTExpression::Type::Ref) {
+                            auto ref = std::reinterpret_pointer_cast<ASTRef>(expr);
+                            auto node = ref->node;
+
+                            if (node->getType() == ASTType::VariableDeclaration && (std::reinterpret_pointer_cast<ASTVariableDeclaration>(node)->flags & (std::uint32_t)ASTVariableDeclaration::Flags::Constant)) {
+                                errors.emplace_back(core::Error::Type::Semantic, binop->begin.source, binop->begin, binop->end, "cannot assign to constant data.");
+                            } else if (node->getType() == ASTType::VariableDefinition && (std::reinterpret_pointer_cast<ASTVariableDefinition>(node)->decl->flags & (std::uint32_t)ASTVariableDeclaration::Flags::Constant)) {
+                                errors.emplace_back(core::Error::Type::Semantic, binop->begin.source, binop->begin, binop->end, "cannot assign to constant data.");
+                            } else {
+                                errors.emplace_back(core::Error::Type::Semantic, node->begin.source, node->begin, node->end, "left-hand operand must be a valid l-value.");
+                            }
+                        } else {
+                            errors.emplace_back(core::Error::Type::Semantic, lhs->begin.source, lhs->begin, lhs->end, "left-hand operand must be a valid l-value.");
+                        }
+                    } else {
+                        errors.emplace_back(core::Error::Type::Semantic, lhs->begin.source, lhs->begin, lhs->end, "left-hand operand must be a valid l-value.");
                     }
+
                 }
 
                 if (!compareTypes(std::reinterpret_pointer_cast<ASTExpression>(binop->left)->evaluatedType, std::reinterpret_pointer_cast<ASTExpression>(binop->right)->evaluatedType)) {
