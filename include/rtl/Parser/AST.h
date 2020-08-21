@@ -34,6 +34,7 @@ namespace rtl {
             Break,
             If,
             Expression,
+            StructureDescription
         };
 
         struct ASTNode {
@@ -46,11 +47,12 @@ namespace rtl {
 
         struct Type {
             std::shared_ptr<ASTNode> baseType;
-            std::shared_ptr<sema::Type> evaluatedType;
             std::uint32_t pointer;
 
+            std::shared_ptr<sema::Type> evaluatedType;
+
             Type() = default;
-            Type(const std::shared_ptr<ASTNode>& baseType, std::uint32_t pointer);
+            Type(const std::shared_ptr<ASTNode> &baseType, std::uint32_t pointer);
         };
 
         struct ASTBuiltinType : public ASTNode {
@@ -266,7 +268,6 @@ namespace rtl {
             ASTLiteral(std::uint64_t value);
             ASTLiteral(double value);
             ASTLiteral(const std::string_view &value, Type ty = Type::String);
-            ASTLiteral(char value);
             ASTLiteral(bool value);
 
             ~ASTLiteral();
@@ -275,7 +276,6 @@ namespace rtl {
             std::uint64_t getInteger() const;
             double getDecimal() const;
             const std::string &getString() const;
-            char getCharacter() const;
             bool getBool() const;
 
             ASTExpression::Type getExprType() const;
@@ -349,6 +349,16 @@ namespace rtl {
             ASTBinaryOperator(Type binopType, std::shared_ptr<ASTNode> left, std::shared_ptr<ASTNode> right);
 
             ASTExpression::Type getExprType() const;
+        };
+
+        struct ASTStructureDescription : public ASTNode {
+            std::shared_ptr<ASTNode> name;
+
+            std::vector<std::shared_ptr<ASTVariableDeclaration>> members;
+
+            ASTStructureDescription(const std::shared_ptr<ASTNode> &name, const std::vector<std::shared_ptr<ASTVariableDeclaration>> &members);
+
+            ASTType getType() const;
         };
     }
 }

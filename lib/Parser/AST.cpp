@@ -2,7 +2,7 @@
 
 namespace rtl {
     namespace parser {
-        Type::Type(const std::shared_ptr<ASTNode>& baseType, std::uint32_t pointer) {
+        Type::Type(const std::shared_ptr<ASTNode> &baseType, std::uint32_t pointer) {
             this->baseType = baseType;
             this->pointer = pointer;
         }
@@ -161,12 +161,6 @@ namespace rtl {
             hash = std::hash<std::string_view>()(value);
         }
 
-        ASTLiteral::ASTLiteral(char value) {
-            literalType = Type::Character;
-            this->value = (char)value;
-            hash = std::hash<decltype(value)>()(value);
-        }
-
         ASTLiteral::ASTLiteral(bool value) {
             literalType = Type::Bool;
             this->value = value;
@@ -186,10 +180,6 @@ namespace rtl {
 
         const std::string &ASTLiteral::getString() const {
             return std::get<std::string>(value);
-        }
-
-        char ASTLiteral::getCharacter() const {
-            return std::get<char>(value);
         }
 
         bool ASTLiteral::getBool() const {
@@ -226,6 +216,15 @@ namespace rtl {
 
         ASTExpression::Type ASTBinaryOperator::getExprType() const {
             return ASTExpression::Type::BinaryOperator;
+        }
+
+        ASTStructureDescription::ASTStructureDescription(const std::shared_ptr<ASTNode> &name, const std::vector<std::shared_ptr<ASTVariableDeclaration>> &members) {
+            this->name = name;
+            this->members = members;
+        }
+
+        ASTType ASTStructureDescription::getType() const {
+            return ASTType::StructureDescription;
         }
     }
 }

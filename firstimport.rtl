@@ -1,0 +1,5 @@
+import "first.rtl"
+
+fun first::sayhi() {
+
+}

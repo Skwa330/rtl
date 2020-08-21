@@ -1,5 +1,15 @@
-fun apply(function: (i32) -> i32, value: i32) -> i32 {
-    val something = 10
+fun main() {
+    val v = 10
 
-    something = 10 # should get: semantic error: cannot assign to constant data.
+    if v == 10 {
+        # v == 10
+    } elif v == 11 {
+        # v == 11
+    } elif v == 12 {
+        # v == 12
+    } elif v == false { # error
+        # won't even get past compilation
+    } else {
+        # v is none of the above.
+    }
 }

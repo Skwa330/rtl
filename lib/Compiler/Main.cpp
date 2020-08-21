@@ -91,9 +91,9 @@ void formatError(const rtl::core::Error &e, const std::string_view &source) {
             ++length;
         }
 
-        std::size_t where = e.getBegin().lexpos;
-
         fmt::print(stderr, "\t\t{:.{}}\n\t\t\033[32;1m", &source[errorLineIndex], length);
+
+        std::size_t where = e.getBegin().lexpos;
 
         std::size_t i = 1;
 
@@ -103,8 +103,10 @@ void formatError(const rtl::core::Error &e, const std::string_view &source) {
 
         std::fputc('^', stderr);
 
-        while (++i < e.getEnd().lexpos) {
-            std::fputc('~', stderr);
+        if (e.getEnd().line == e.getBegin().line) {
+            while (++i < e.getEnd().lexpos) {
+                std::fputc('~', stderr);
+            }
         }
 
         fmt::print(stderr, "\033[0m\n");
@@ -213,7 +215,7 @@ int main(int argc, char **argv) {
         }
 
         if (errors.size()) {
-            fmt::print(stderr, "\n\n{}: there were too many errors; we may not continue with compilation.\n", programName);
+            fmt::print(stderr, "\n{}: there were errors; we may not continue with compilation.\n", programName);
             return -1;
         }
     } catch (const rtl::core::Error &e) {
@@ -224,7 +226,7 @@ int main(int argc, char **argv) {
         formatError(e, e.getSource());
 
         if (errors.size()) {
-            fmt::print(stderr, "{}: there were errors; we may not continue with compilation.\n", programName);
+            fmt::print(stderr, "\n{}: there were errors; we may not continue with compilation.\n", programName);
             return -1;
         }
     } catch (const std::exception &e) {

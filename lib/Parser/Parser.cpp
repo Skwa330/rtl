@@ -1,5 +1,8 @@
 #include "rtl/Parser/Parser.h"
 #include "rtl/Core/Error.h"
+
+#include <signal.h>
+
 #include <fmt/format.h>
 
 namespace rtl {
@@ -48,6 +51,10 @@ namespace rtl {
 
             if (matchFunction().second) {
                 return parseFunction();
+            } else if (matchVariableDefinition().second) {
+                return parseVariableDefinition();
+            } else if (matchVariableDeclaration().second) {
+                return parseVariableDeclaration();
             }
 
             return {};
@@ -59,9 +66,21 @@ namespace rtl {
 
             if ((c = matchFunction(b + p)).second) {
                 return MatchType(p + c.first, true);
-            } else {
+            } else if (c.first) {
                 return MatchType(p + c.first, false);
+            } else if ((c = matchVariableDefinition(b + p)).second) {
+                return MatchType(p + c.first, true);
+            } else if (c.first) {
+                return MatchType(p + c.first, false);
+            } else if ((c = matchVariableDeclaration(b + p)).second) {
+                return MatchType(p + c.first, true);
+            } else if (c.first) {
+                return MatchType(p + c.first, false);
+            } else if (lexer->peek(b + p).type != TokenType::Eoi) {
+                return MatchType(p, false);
             }
+
+            return MatchType(p, false);
         }
 
         Type Parser::parseType() {
@@ -259,10 +278,11 @@ namespace rtl {
 
             lexer->eat(); // val or var
 
-            auto name = std::make_shared<ASTLiteral>(lexer->peek().text, ASTLiteral::Type::Name);
-            name->begin = lexer->peek().begin;
-            name->end = lexer->peek().end;
-            lexer->eat();
+            auto name = parseName();
+            // auto name = std::make_shared<ASTLiteral>(lexer->peek().text, ASTLiteral::Type::Name);
+            // name->begin = lexer->peek().begin;
+            // name->end = lexer->peek().end;
+            // lexer->eat();
 
             lexer->eat(); // :
 
@@ -289,15 +309,14 @@ namespace rtl {
                 return MatchType(p, false);
             }
 
-            if (lexer->peek(b + p).type != TokenType::Name) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected identifier.");
-                return MatchType(p, false);
+            if (!(c = matchName(b + p)).second) {
+                return MatchType(p + c.first, false);
             }
-            ++p;
+            p += c.first;
 
             if (lexer->peek(b + p).type != TokenType::Colon) {
                 error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected ':'.");
-                return MatchType(p, false);
+                return MatchType(p + c.first, false);
             }
             ++p;
 
@@ -323,10 +342,11 @@ namespace rtl {
             core::SourceLocation begin = lexer->peek().begin, end;
             lexer->eat(); // val or var
 
-            auto name = std::make_shared<ASTLiteral>(lexer->peek().text, ASTLiteral::Type::Name);
-            name->begin = lexer->peek().begin;
-            name->end = lexer->peek().end;
-            lexer->eat();
+            auto name = parseName();
+            // auto name = std::make_shared<ASTLiteral>(lexer->peek().text, ASTLiteral::Type::Name);
+            // name->begin = lexer->peek().begin;
+            // name->end = lexer->peek().end;
+            // lexer->eat();
 
             Type ty;
 
@@ -368,11 +388,10 @@ namespace rtl {
                 return MatchType(p, false);
             }
 
-            if (lexer->peek(b + p).type != TokenType::Name) {
-                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected identifier.");
-                return MatchType(p, false);
+            if (!(c = matchName(b + p)).second) {
+                return MatchType(p + c.first, false);
             }
-            ++p;
+            p += c.first;
 
             if (lexer->peek(b + p).type == TokenType::Colon) {
                 ++p;
@@ -393,6 +412,41 @@ namespace rtl {
                 return MatchType(p + c.first, false);
             }
             p += c.first;
+
+            return MatchType(p, true);
+        }
+
+        std::shared_ptr<ASTStructureDescription> Parser::parseStructureDescription() {
+            return {};
+        }
+
+        MatchType Parser::matchStructureDescription(std::size_t b) {
+            std::size_t p = 0;
+            MatchType c;
+
+            if (lexer->peek(b + p).type == TokenType::KwPub) {
+                ++p;
+            }
+
+            if (lexer->peek(b + p).type != TokenType::KwStruct) {
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, fmt::format("unexpected '{}'.", lexer->peek(b + p).text));
+                return MatchType(p, false);
+            }
+            ++p;
+
+            if (lexer->peek(b + p).type != TokenType::LeftBrace) {
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected '{'.");
+                return MatchType(p, false);
+            }
+            ++p;
+
+
+
+            if (lexer->peek(b + p).type != TokenType::RightBrace) {
+                error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "expected '}'.");
+                return MatchType(p, false);
+            }
+            ++p;
 
             return MatchType(p, true);
         }
@@ -499,6 +553,8 @@ namespace rtl {
         std::shared_ptr<ASTBlock> Parser::parseBlock() {
             if (!matchBlock().second) throw error;
 
+            auto begin = lexer->peek().begin;
+
             std::vector<std::shared_ptr<ASTNode>> nodes;
             lexer->eat(); // {
 
@@ -506,9 +562,12 @@ namespace rtl {
                 nodes.push_back(parseStatement());
             }
 
+            auto end = lexer->peek().end;
             lexer->eat(); // }
 
             auto block = std::make_shared<ASTBlock>(nodes);
+            block->begin = begin;
+            block->end = end;
 
             // Set the current block as the parent to all of the sub blocks :)
             for (auto &node : nodes) {
@@ -912,7 +971,7 @@ namespace rtl {
                     }
                 }
 
-                end = lexer->peek().end; // In case we have implicit return type we need the proper source location for 'end')
+                end = lexer->peek().end; // In case we have implicit return type we need the proper source location for 'end'
                 lexer->eat(); // ]
             }
 
@@ -933,6 +992,9 @@ namespace rtl {
 
             if (matchBlock().second) {
                 auto functionBody = std::make_shared<ASTFunctionBody>(parseBlock());
+                functionBody->begin = functionBody->block->begin;
+                functionBody->end = functionBody->block->end;
+
                 functionHeader->body = functionBody;
                 functionBody->header = functionHeader;
             }
@@ -1386,8 +1448,7 @@ namespace rtl {
                 lexer->eat();
                 return result;
             } else if (lexer->peek().type == TokenType::Character) {
-                fmt::print("{:*^30}\n", fmt::format("The character is {}", lexer->peek().text.data()[0]));
-                auto result = std::make_shared<ASTLiteral>(lexer->peek().text.data()[0]);
+                auto result = std::make_shared<ASTLiteral>(std::get<std::string>(lexer->peek().litrl), ASTLiteral::Type::Character);
                 result->begin = lexer->peek().begin;
                 result->end = lexer->peek().end;
 
@@ -1774,8 +1835,8 @@ namespace rtl {
             } else if (lexer->peek(b + p).type == TokenType::String) {
                 return MatchType(++p, true);
             } else if (lexer->peek(b + p).type == TokenType::Character) {
-                if (lexer->peek(b + p).text.size() > 1) {
-                    error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek().begin, lexer->peek().end, "invalid character literal.");
+                if (std::get<std::string>(lexer->peek(b + p).litrl).size() < 1) {
+                    error = core::Error(core::Error::Type::Syntactic, lexer->source, lexer->peek(b + p).begin, lexer->peek(b + p).end, "invalid character literal.");
                     return MatchType(p, false);
                 }
 

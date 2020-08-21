@@ -17,9 +17,12 @@ namespace rtl {
             std::vector<std::shared_ptr<parser::ASTNode>> &nodes;
             std::vector<core::Error> &errors;
 
-            std::shared_ptr<parser::ASTFunctionHeader> currentFunction;
-            std::shared_ptr<parser::ASTBlock> currentBlock;
-            std::shared_ptr<parser::ASTNode> currentStatement;
+            std::shared_ptr<parser::ASTFunctionHeader> currentFunction {};
+            std::shared_ptr<parser::ASTBlock> currentBlock {};
+            std::shared_ptr<parser::ASTNode> currentStatement {};
+
+            std::shared_ptr<parser::ASTFor> currentFor {};
+            std::shared_ptr<parser::ASTWhile> currentWhile {};
 
             std::string unqualifyName(const std::shared_ptr<parser::ASTNode> &name);
             bool compareQualifiedNames(const std::shared_ptr<parser::ASTNode> &left, const std::shared_ptr<parser::ASTNode> &right);
@@ -52,7 +55,7 @@ namespace rtl {
 
             std::shared_ptr<parser::ASTNode> validateExpression(const std::shared_ptr<parser::ASTExpression> &expr);
 
-            void validateNode(const std::shared_ptr<parser::ASTNode> &node);
+            void validateNode(std::shared_ptr<parser::ASTNode> &node);
 
             void validate();
         };

@@ -13,7 +13,7 @@ namespace rtl {
 
         class TypeDeclaration {
         public:
-            using InfoType = std::variant<FunctionPrototype>;//, parser::ASTStructureDescription, parser::ASTEnumerationDescription> // A UNION SHOULD JUST BE A STRUCT WITH A 'UNION' FLAG SET.
+            using InfoType = std::variant<FunctionPrototype, parser::ASTStructureDescription>;//, parser::ASTEnumerationDescription, parser::ASTUnionDescription>
 
             enum class Tag {
                 None,

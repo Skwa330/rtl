@@ -7,15 +7,7 @@
 #include "rtl/Core/Error.h"
 
 #include <utility>
-
-/*
-      rtl operator precedence -
-      higher precedence = lower numbers = more priority
-
-      0 - integer, decimal, string, char name
-      1 - function call, subscript or member access
-      2 - !, ~, ^, *,
-*/
+#include <filesystem>
 
 namespace rtl {
     namespace parser {
@@ -25,6 +17,8 @@ namespace rtl {
         private:
             std::vector<std::shared_ptr<ASTNode>>& nodes;
             std::unique_ptr<Lexer> lexer;
+
+            std::shared_ptr<ASTNode> nsPrefix {};
 
             core::Error error; // This is just how we save errors in the matching functions so we can actually report the correct thing. :)
         public:
@@ -49,6 +43,9 @@ namespace rtl {
 
             std::shared_ptr<ASTVariableDefinition> parseVariableDefinition();
             MatchType matchVariableDefinition(std::size_t b = 0);
+
+            std::shared_ptr<ASTStructureDescription> parseStructureDescription();
+            MatchType matchStructureDescription(std::size_t b = 0);
 
             std::shared_ptr<ASTNode> parseStatement();
             MatchType matchStatement(std::size_t b = 0);

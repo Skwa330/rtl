@@ -338,7 +338,7 @@ namespace rtl {
                         }
 
                         case ASTLiteral::Type::Character: {
-                            result += fmt::format("'{}'", literal->getCharacter());
+                            result += fmt::format("'{}'", literal->getString());
                             break;
                         }
 
